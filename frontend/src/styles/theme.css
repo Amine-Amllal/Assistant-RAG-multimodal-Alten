@@ -1,0 +1,68 @@
+:root {
+  /* Brand colors */
+  --alten-red: #e2001a;
+  --alten-red-hover: #c40017;
+  --alten-yellow: #ffed00;
+  --alten-blue: #0093d0;
+  --alten-blue-hover: #0077a8;
+  --alten-black: #111111;
+  --alten-white: #ffffff;
+
+  /* Neutrals */
+  --gray-900: #1a1a1a;
+  --gray-700: #3d3d3d;
+  --gray-500: #6b6b6b;
+  --gray-300: #d4d4d4;
+  --gray-100: #f4f4f4;
+
+  /* State colors */
+  --color-success: #0093d0;
+  --color-warning: #ffed00;
+  --color-danger: #e2001a;
+
+  /* Typography */
+  --font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-3xl: 3rem;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-heavy: 800;
+
+  /* Spacing scale (8px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  /* Borders */
+  --border-hairline: 1px solid var(--gray-300);
+  --border-emphasis: 1.5px solid var(--alten-black);
+
+  /* Focus */
+  --focus-ring: 0 0 0 2px var(--alten-white), 0 0 0 4px var(--alten-red);
+
+  /* Layout */
+  --topnav-height: 64px;
+  --sidebar-width: 280px;
+}

@@ -1,0 +1,65 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\pagestyle{empty}
+
+\newcommand{\ensamlogo}{%
+  \IfFileExists{images/ensam_logo.png}{\includegraphics[width=0.48\textwidth]{images/ensam_logo.png}}{%
+    \fbox{\begin{minipage}[c][4.4cm][c]{0.48\textwidth}
+      \centering
+      {\Large\bfseries ENSAM MEKNES}\\[0.2cm]
+      {\small Universit\'e Moulay Ismail}
+    \end{minipage}}%
+  }%
+}
+
+\newcommand{\altenlogo}{%
+  \IfFileExists{images/alten_logo.png}{\includegraphics[width=0.54\textwidth]{images/alten_logo.png}}{%
+    \fbox{\begin{minipage}[c][4.4cm][c]{0.54\textwidth}
+      \centering
+      {\Huge\bfseries ALTEN}
+    \end{minipage}}%
+  }%
+}
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+\vspace*{0.8cm}
+
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\ensamlogo
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\altenlogo
+\end{minipage}
+
+\vfill
+
+{\Large\bfseries Rapport de Projet de Fin d'Ann\'ee}\\[1.2cm]
+
+{\huge\bfseries Assistant RAG multimodal expos\'e via MCP interrogation de documents techniques (texte + images)}\\[1.8cm]
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+{\bfseries R\'ealis\'e par}\\[0.2cm]
+AMLLAL Amine
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+{\bfseries Encadr\'e par}\\[0.2cm]
+M. DARKAOUI Hatim
+\end{minipage}
+
+\vfill
+\end{center}
+\end{titlepage}
+
+\end{document}
