@@ -1,0 +1,33 @@
+# --- Web framework ---
+fastapi
+uvicorn[standard]
+python-multipart
+
+# --- Config ---
+pydantic-settings
+
+# --- Document parsing / chunking ---
+docling
+docling-core
+transformers          # tokenizer only (HybridChunker), no local model inference
+
+# --- Hugging Face Inference API (embeddings + VLM image captioning) ---
+huggingface_hub
+numpy
+
+# --- Mistral conversational LLM (native API, not via HF) ---
+mistralai
+
+# --- Vector store ---
+chromadb
+
+httpx
+
+# Bridges Python's SSL trust to the OS certificate store. Needed on networks behind a
+# TLS-inspecting corporate proxy (e.g. Zscaler) whose root CA is trusted by Windows but
+# not by Python's bundled certifi list.
+truststore
+
+# Install with the CPU-only torch wheel (docling loads layout/figure-classification
+# models internally regardless of do_ocr) to avoid pulling a large CUDA build:
+#   pip install --user -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu

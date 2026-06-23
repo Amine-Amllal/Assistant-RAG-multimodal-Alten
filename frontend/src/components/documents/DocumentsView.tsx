@@ -21,6 +21,15 @@ export function DocumentsView() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    const hasProcessing = documents.some((doc) => doc.status === "processing");
+    if (!hasProcessing) return;
+    const interval = setInterval(() => {
+      fetchDocuments().then(setDocuments);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [documents]);
+
   async function handleFiles(files: File[]) {
     const uploaded = await Promise.all(files.map(uploadDocument));
     setDocuments((prev) => [...uploaded, ...prev]);

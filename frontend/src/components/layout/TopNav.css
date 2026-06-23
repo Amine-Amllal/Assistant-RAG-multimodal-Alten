@@ -19,16 +19,16 @@
 }
 
 .topnav__logo {
-  display: inline-flex;
-  align-items: center;
+  height: 28px;
+  width: auto;
 }
 
 .topnav__title {
-  font-weight: var(--fw-bold);
-  font-size: var(--fs-md);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--alten-black);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  color: var(--gray-500);
+  border-left: var(--border-hairline);
+  padding-left: var(--space-2);
 }
 
 .topnav__links {
@@ -63,17 +63,4 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-
-.topnav__user {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-lg);
-  background: var(--alten-black);
-  color: var(--alten-white);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
 }
