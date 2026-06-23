@@ -19,6 +19,11 @@ class Settings(BaseSettings):
 
     DATA_DIR: str = "./data"
 
+    # Optional local folder (produced by `docling-tools models download layout tableformer -o <dir>`)
+    # containing Docling's model weights. When set, Docling loads from here instead of trying to
+    # download from Hugging Face — needed on networks that block HF's storage CDN.
+    DOCLING_ARTIFACTS_PATH: str = ""
+
     CORS_ALLOWED_ORIGINS: str = "http://localhost:5173"
 
     @property

@@ -26,6 +26,10 @@ def _build_converter() -> DocumentConverter:
     pdf_pipeline_options = PdfPipelineOptions()
     pdf_pipeline_options.do_ocr = False  # OCR out of scope for this iteration
     pdf_pipeline_options.generate_picture_images = True
+    if settings.DOCLING_ARTIFACTS_PATH:
+        # Load model weights from a local folder instead of downloading from HF.
+        # Produced via: docling-tools models download layout tableformer -o <dir>
+        pdf_pipeline_options.artifacts_path = settings.DOCLING_ARTIFACTS_PATH
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options)}
     )
