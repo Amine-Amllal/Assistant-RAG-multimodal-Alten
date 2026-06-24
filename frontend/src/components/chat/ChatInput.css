@@ -17,6 +17,7 @@
   border-radius: var(--radius-md);
   font-family: var(--font-family);
   font-size: var(--fs-md);
+  background: var(--alten-white);
   color: var(--gray-900);
   line-height: 1.5;
 }

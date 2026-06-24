@@ -14,6 +14,15 @@
   border-color: var(--gray-500);
 }
 
+.doc-card--clickable {
+  cursor: pointer;
+}
+
+.doc-card--clickable:focus-visible {
+  outline: 2px solid var(--alten-blue);
+  outline-offset: 2px;
+}
+
 .doc-card__thumb {
   flex-shrink: 0;
   width: 56px;
@@ -69,6 +78,31 @@
   color: var(--gray-500);
 }
 
+.doc-card__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--gray-700);
+  animation: doc-card-progress-pulse 1.6s ease-in-out infinite;
+}
+
+.doc-card__progress span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes doc-card-progress-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .doc-card__footer {
   display: flex;
   align-items: center;
@@ -79,4 +113,32 @@
 .doc-card__date {
   font-size: var(--fs-xs);
   color: var(--gray-500);
+}
+
+.doc-card__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.doc-card__delete {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--gray-100);
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  color: var(--gray-700);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.doc-card__delete:hover {
+  background: var(--alten-red);
+  color: var(--alten-white);
+  border-color: var(--alten-red);
 }

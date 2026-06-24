@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import { useSidebarCollapsed } from "./SidebarContext";
 import "./Sidebar.css";
 
 export function Sidebar({ children }: { children: ReactNode }) {
-  return <aside className="sidebar">{children}</aside>;
+  const isCollapsed = useSidebarCollapsed();
+  return <aside className={`sidebar${isCollapsed ? " sidebar--collapsed" : ""}`}>{children}</aside>;
 }

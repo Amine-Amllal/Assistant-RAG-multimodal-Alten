@@ -15,9 +15,30 @@
   gap: var(--space-3);
 }
 
+.auth-layout__logo-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 72px;
+}
+
 .auth-layout__logo {
-  height: 40px;
+  height: 72px;
   width: auto;
+}
+
+.auth-layout__logo--dark {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+:root.dark .auth-layout__logo--light {
+  opacity: 0;
+}
+
+:root.dark .auth-layout__logo--dark {
+  opacity: 1;
 }
 
 .auth-layout__title {

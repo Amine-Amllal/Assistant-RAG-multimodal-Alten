@@ -1,0 +1,116 @@
+.doc-menu {
+  position: relative;
+}
+
+.doc-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--alten-white);
+  color: var(--gray-500);
+  cursor: pointer;
+}
+
+.doc-menu__trigger:hover {
+  background: var(--gray-100);
+  color: var(--alten-black);
+}
+
+.doc-menu__dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 180px;
+  background: var(--alten-white);
+  border: var(--border-hairline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.doc-menu__dropdown button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--gray-700);
+  cursor: pointer;
+  text-align: left;
+}
+
+.doc-menu__dropdown button:hover:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--alten-black);
+}
+
+.doc-menu__dropdown button:disabled {
+  color: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.doc-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  z-index: 100;
+}
+
+.doc-menu__dialog {
+  background: var(--alten-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  width: min(380px, 100%);
+  padding: var(--space-6);
+}
+
+.doc-menu__dialog-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  margin: 0 0 var(--space-4);
+}
+
+.doc-menu__input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--gray-300);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  background: var(--alten-white);
+  color: var(--gray-900);
+}
+
+.doc-menu__input:focus {
+  outline: none;
+  border-color: var(--alten-blue);
+}
+
+.doc-menu__error {
+  font-size: var(--fs-xs);
+  color: var(--alten-red);
+  margin: var(--space-2) 0 0;
+}
+
+.doc-menu__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

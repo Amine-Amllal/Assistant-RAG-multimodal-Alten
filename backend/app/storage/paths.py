@@ -11,6 +11,10 @@ def images_dir() -> Path:
     return settings.data_dir / "images"
 
 
+def markdown_dir() -> Path:
+    return settings.data_dir / "markdown"
+
+
 def chroma_dir() -> Path:
     return settings.data_dir / "chroma"
 
@@ -20,5 +24,5 @@ def sqlite_path() -> Path:
 
 
 def ensure_data_dirs() -> None:
-    for d in (uploads_dir(), images_dir(), chroma_dir()):
+    for d in (uploads_dir(), images_dir(), markdown_dir(), chroma_dir()):
         d.mkdir(parents=True, exist_ok=True)

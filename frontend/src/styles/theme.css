@@ -20,7 +20,29 @@
   --color-warning: #ffed00;
   --color-danger: #e2001a;
 
+  /* Surfaces — a layered "raised" surface that sits above the page
+     background, used by cards/nav so elevation reads in both themes. */
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f7f7f8;
+
+  /* Glassmorphism — frosted, translucent panels (nav, hero card, modals).
+     Consumed via backdrop-filter + this background/border pair. */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(17, 17, 17, 0.08);
+  --glass-blur: 16px;
+
+  /* Brand gradients — expressive accents that keep the Alten palette. */
+  --gradient-brand: linear-gradient(135deg, #e2001a 0%, #ff4d5e 100%);
+  --gradient-spectrum: linear-gradient(120deg, #e2001a 0%, #0093d0 100%);
+  --gradient-mesh:
+    radial-gradient(60% 80% at 15% 10%, color-mix(in srgb, var(--alten-red) 18%, transparent) 0%, transparent 60%),
+    radial-gradient(55% 70% at 90% 20%, color-mix(in srgb, var(--alten-blue) 16%, transparent) 0%, transparent 55%),
+    radial-gradient(60% 60% at 70% 95%, color-mix(in srgb, var(--alten-yellow) 16%, transparent) 0%, transparent 55%);
+
   /* Typography */
+  --font-display: "Space Grotesk", "Inter", "Helvetica Neue", Arial, sans-serif;
   --font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
@@ -41,19 +63,26 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Radii */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  /* Radii — softer, more contemporary corners. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-pill: 999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  /* Shadows — layered elevation scale + colored brand glow. */
+  --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.06), 0 1px 3px rgba(17, 17, 17, 0.08);
+  --shadow-md: 0 4px 8px rgba(17, 17, 17, 0.06), 0 8px 24px rgba(17, 17, 17, 0.1);
+  --shadow-lg: 0 12px 24px rgba(17, 17, 17, 0.08), 0 24px 48px rgba(17, 17, 17, 0.12);
+  --shadow-glow-red: 0 8px 28px color-mix(in srgb, var(--alten-red) 32%, transparent);
+  --shadow-glow-blue: 0 8px 28px color-mix(in srgb, var(--alten-blue) 30%, transparent);
 
   /* Borders */
   --border-hairline: 1px solid var(--gray-300);
@@ -65,4 +94,46 @@
   /* Layout */
   --topnav-height: 64px;
   --sidebar-width: 280px;
+  --sidebar-collapsed-width: 64px;
+}
+
+/* Dark theme: every component consumes these same variable names, so
+   redefining them here is enough to re-skin the whole app — brand accents
+   (red/yellow/blue) stay constant, only the neutral surface/text axis flips. */
+:root.dark {
+  --alten-white: #1c1c1e;
+  --alten-black: #f5f5f5;
+
+  --gray-900: #e8e8e8;
+  --gray-700: #b8b8b8;
+  --gray-500: #8e8e8e;
+  --gray-300: #3a3a3c;
+  --gray-100: #131314;
+
+  --surface: #1c1c1e;
+  --surface-raised: #242427;
+  --surface-sunken: #161618;
+
+  --glass-bg: rgba(28, 28, 30, 0.66);
+  --glass-bg-strong: rgba(28, 28, 30, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+
+  --gradient-mesh:
+    radial-gradient(60% 80% at 15% 10%, color-mix(in srgb, var(--alten-red) 26%, transparent) 0%, transparent 60%),
+    radial-gradient(55% 70% at 90% 20%, color-mix(in srgb, var(--alten-blue) 24%, transparent) 0%, transparent 55%),
+    radial-gradient(60% 60% at 70% 95%, color-mix(in srgb, var(--alten-yellow) 16%, transparent) 0%, transparent 55%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

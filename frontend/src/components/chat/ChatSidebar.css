@@ -55,3 +55,24 @@
   color: var(--gray-500);
   line-height: 1.5;
 }
+
+.chat-sidebar--collapsed {
+  align-items: center;
+}
+
+.chat-sidebar__new-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--alten-red);
+  color: var(--alten-white);
+  cursor: pointer;
+}
+
+.chat-sidebar__new-collapsed:hover {
+  background: var(--alten-red-hover);
+}

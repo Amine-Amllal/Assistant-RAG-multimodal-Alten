@@ -8,6 +8,40 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  position: relative;
+}
+
+.app-shell__sidebar-toggle {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--sidebar-width);
+  transform: translateX(-50%);
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: var(--border-hairline);
+  background: var(--alten-white);
+  box-shadow: var(--shadow-sm);
+  color: var(--gray-500);
+  cursor: pointer;
+  z-index: 10;
+  transition: left 0.25s ease;
+}
+
+.app-shell__sidebar-toggle:hover {
+  color: var(--alten-black);
+}
+
+.app-shell__sidebar-toggle--collapsed {
+  left: var(--sidebar-collapsed-width);
+}
+
+.app-shell__sidebar-toggle-icon--collapsed {
+  transform: rotate(180deg);
 }
 
 .app-shell__content {

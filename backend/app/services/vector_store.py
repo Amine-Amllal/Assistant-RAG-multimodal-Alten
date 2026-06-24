@@ -61,6 +61,34 @@ def upsert_image_chunks(document_id: str, document_name: str, image_records, emb
     _collection().upsert(ids=ids, embeddings=embeddings, metadatas=metadatas, documents=documents)
 
 
+def delete_document(document_id: str) -> None:
+    _collection().delete(where={"document_id": document_id})
+
+
+def get_image_chunks(document_id: str) -> list[RetrievedChunk]:
+    results = _collection().get(
+        where={"$and": [{"document_id": document_id}, {"chunk_type": "image"}]},
+    )
+    if not results["ids"]:
+        return []
+
+    chunks: list[RetrievedChunk] = []
+    for doc_text, metadata in zip(results["documents"], results["metadatas"]):
+        page = metadata["page"]
+        chunks.append(
+            RetrievedChunk(
+                document_id=metadata["document_id"],
+                document_name=metadata["document_name"],
+                page=page if page != -1 else None,
+                chunk_type=metadata["chunk_type"],
+                text=doc_text,
+                image_path=metadata["image_path"] or None,
+                score=1.0,
+            )
+        )
+    return sorted(chunks, key=lambda c: (c.page is None, c.page))
+
+
 def query(embedding: list[float], top_k: int) -> list[RetrievedChunk]:
     results = _collection().query(query_embeddings=[embedding], n_results=top_k)
     if not results["ids"][0]:

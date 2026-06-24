@@ -10,6 +10,14 @@ body {
   padding: 0;
 }
 
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   font-family: var(--font-family);
   background: var(--alten-white);
@@ -17,6 +25,19 @@ body {
   font-size: var(--fs-md);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Subtle brand mesh wash behind the whole app — adds depth without
+   competing with content, and respects the active theme tokens. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--gradient-mesh);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 #root {
@@ -28,15 +49,17 @@ h2,
 h3,
 h4 {
   margin: 0;
+  font-family: var(--font-display);
   font-weight: var(--fw-bold);
   line-height: 1.15;
+  letter-spacing: -0.01em;
   color: var(--alten-black);
 }
 
 h1 {
   font-size: var(--fs-2xl);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 h2 {
@@ -62,6 +85,15 @@ a:hover {
 
 button {
   font-family: inherit;
+}
+
+/* Native <select>/<option> popups often follow the OS color-scheme instead
+   of inheriting from their parent, so set colors explicitly here rather
+   than relying on inheritance or the color-scheme property alone. */
+select,
+option {
+  background: var(--alten-white);
+  color: var(--gray-900);
 }
 
 ul,

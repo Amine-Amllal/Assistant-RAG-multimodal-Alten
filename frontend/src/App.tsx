@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { HomeView } from "./components/home/HomeView";
 import { ChatView } from "./components/chat/ChatView";
 import { DocumentsView } from "./components/documents/DocumentsView";
+import { DocumentDetailView } from "./components/documents/DocumentDetailView";
 import { SignInPage } from "./components/auth/SignInPage";
 import { SignUpPage } from "./components/auth/SignUpPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -25,6 +26,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <DocumentsView />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/documents/:id"
+        element={
+          <ProtectedRoute>
+            <DocumentDetailView />
           </ProtectedRoute>
         }
       />

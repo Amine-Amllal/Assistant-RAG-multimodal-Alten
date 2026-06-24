@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,8 +9,14 @@ class Settings(BaseSettings):
 
     HF_TOKEN: str = ""
     HF_EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
-    HF_VLM_MODEL: str = "Qwen/Qwen2-VL-7B-Instruct"
-    HF_INFERENCE_PROVIDER: str = "hf-inference"
+    # Provider serving HF_EMBEDDING_MODEL for the "feature-extraction" task.
+    HF_EMBEDDING_PROVIDER: str = "hf-inference"
+    HF_VLM_MODEL: str = "google/gemma-3-27b-it"
+    # Provider serving HF_VLM_MODEL for the "conversational" task (image captioning).
+    # Kept separate from HF_EMBEDDING_PROVIDER: the two models are rarely served by the
+    # same provider, and chat_completion()/feature_extraction() each require a provider
+    # that supports their specific task.
+    HF_VLM_PROVIDER: str = "deepinfra"
 
     MISTRAL_API_KEY: str = ""
     MISTRAL_MODEL: str = "mistral-small-latest"
@@ -36,3 +43,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# huggingface_hub (used directly by Docling's model downloader, not just our own
+# InferenceClient calls) reads the HF_TOKEN process environment variable itself —
+# it has no visibility into pydantic-settings' parsed .env values. Export it so
+# Docling's internal downloads are authenticated too.
+if settings.HF_TOKEN:
+    os.environ.setdefault("HF_TOKEN", settings.HF_TOKEN)

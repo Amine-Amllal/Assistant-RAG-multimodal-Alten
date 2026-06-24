@@ -1,0 +1,60 @@
+.expandable-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.expandable-tabs__tab {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--gray-500);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, gap 0.25s ease, padding 0.25s ease;
+}
+
+.expandable-tabs__tab:hover {
+  background: var(--alten-white);
+  color: var(--alten-black);
+  text-decoration: none;
+}
+
+.expandable-tabs__tab--active {
+  background: var(--alten-white);
+  color: var(--alten-red);
+  box-shadow: var(--shadow-sm);
+}
+
+.expandable-tabs__tab:hover,
+.expandable-tabs__tab--active {
+  gap: var(--space-2);
+}
+
+.expandable-tabs__icon {
+  flex-shrink: 0;
+}
+
+.expandable-tabs__label {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 0.25s ease, opacity 0.2s ease;
+}
+
+.expandable-tabs__tab:hover .expandable-tabs__label,
+.expandable-tabs__tab--active .expandable-tabs__label {
+  max-width: 120px;
+  opacity: 1;
+}

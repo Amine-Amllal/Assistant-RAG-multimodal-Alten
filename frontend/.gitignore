@@ -4,3 +4,10 @@ dist-ssr
 *.local
 .env
 .env.local
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Compiled config output (source is vite.config.ts)
+vite.config.js
+vite.config.d.ts

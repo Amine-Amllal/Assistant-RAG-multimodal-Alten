@@ -3,12 +3,30 @@ export type DocumentStatus = "indexed" | "processing" | "error";
 export interface DocumentItem {
   id: string;
   name: string;
-  category: "Research Paper" | "Technical Manual" | "Engineering Guide";
+  category: string;
   pages: number;
   sizeMb: number;
   status: DocumentStatus;
   uploadedAt: string;
   thumbnailColor: "red" | "blue" | "black" | "yellow";
+  processingStep: string | null;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+}
+
+export interface DocumentImage {
+  filename: string;
+  page: number | null;
+  caption: string;
+  url: string;
+}
+
+export interface DocumentDetail extends DocumentItem {
+  markdown: string | null;
+  images: DocumentImage[];
 }
 
 export type SourceKind = "text" | "image";

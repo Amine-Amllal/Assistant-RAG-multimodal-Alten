@@ -1,12 +1,21 @@
 .sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
-  border-right: var(--border-hairline);
-  background: var(--gray-100);
+  border-right: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   height: calc(100vh - var(--topnav-height));
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar--collapsed {
+  width: var(--sidebar-collapsed-width);
+  padding: var(--space-4) var(--space-2);
 }

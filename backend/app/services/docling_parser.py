@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.datamodel.base_models import ConversionStatus, InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
@@ -19,6 +20,7 @@ class ChunkRecord:
 class ImageRecord:
     page: int | None
     image: object  # PIL.Image.Image
+    caption: str | None  # caption text Docling found near the figure in the source document, if any
 
 
 @lru_cache
@@ -31,7 +33,15 @@ def _build_converter() -> DocumentConverter:
         # Produced via: docling-tools models download layout tableformer -o <dir>
         pdf_pipeline_options.artifacts_path = settings.DOCLING_ARTIFACTS_PATH
     return DocumentConverter(
-        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options)}
+        format_options={
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_options=pdf_pipeline_options,
+                # The default docling-parse backend hits `std::bad_alloc` on some PDFs
+                # (e.g. pages with large/complex embedded images). pypdfium2 is more
+                # memory-robust for parsing, at a small cost in layout-extraction fidelity.
+                backend=PyPdfiumDocumentBackend,
+            )
+        }
     )
 
 
@@ -43,6 +53,10 @@ def parse_document(file_path: Path):
     return result.document
 
 
+def export_markdown(docling_doc) -> str:
+    return docling_doc.export_to_markdown()
+
+
 def extract_images(docling_doc) -> list[ImageRecord]:
     records: list[ImageRecord] = []
     for picture in docling_doc.pictures:
@@ -50,7 +64,8 @@ def extract_images(docling_doc) -> list[ImageRecord]:
         if image is None:
             continue
         page_no = picture.prov[0].page_no if picture.prov else None
-        records.append(ImageRecord(page=page_no, image=image))
+        caption = picture.caption_text(docling_doc).strip() or None
+        records.append(ImageRecord(page=page_no, image=image, caption=caption))
     return records
 
 

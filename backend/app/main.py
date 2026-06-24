@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import routes_chat, routes_documents
+from app.api import routes_chat, routes_documents, routes_groups
 from app.config import settings
 from app.database import init_db
 from app.storage.paths import ensure_data_dirs, images_dir
@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(routes_documents.router)
+app.include_router(routes_groups.router)
 app.include_router(routes_chat.router)
 
 

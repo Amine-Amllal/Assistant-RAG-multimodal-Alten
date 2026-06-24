@@ -1,4 +1,6 @@
+import { useSidebarCollapsed } from "../layout/SidebarContext";
 import { Button } from "../ui/Button";
+import { PlusIcon } from "../ui/icons";
 import "./ChatSidebar.css";
 
 const SUGGESTED_QUESTIONS = [
@@ -13,6 +15,18 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ onNewChat, onSuggestionClick }: ChatSidebarProps) {
+  const isCollapsed = useSidebarCollapsed();
+
+  if (isCollapsed) {
+    return (
+      <div className="chat-sidebar chat-sidebar--collapsed">
+        <button type="button" className="chat-sidebar__new-collapsed" onClick={onNewChat} title="New conversation">
+          <PlusIcon />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="chat-sidebar">
       <Button variant="primary" onClick={onNewChat}>
