@@ -41,6 +41,24 @@
   box-shadow: var(--shadow-lg), 0 0 80px color-mix(in srgb, var(--alten-red) 12%, transparent);
 }
 
+/* Dark mode: swap the flat translucent glass for a deliberate near-black card
+   with a red -> blue brand-mesh glow, so the hero feels designed for dark mode
+   rather than just inheriting the light surface. */
+:root.dark .home__hero-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(72% 90% at 12% 6%, color-mix(in srgb, var(--alten-red) 34%, transparent) 0%, transparent 58%),
+    radial-gradient(62% 78% at 92% 16%, color-mix(in srgb, var(--alten-blue) 30%, transparent) 0%, transparent 55%),
+    radial-gradient(85% 80% at 78% 102%, color-mix(in srgb, var(--alten-blue) 16%, transparent) 0%, transparent 60%),
+    linear-gradient(160deg, #1a1a20 0%, #0d0d11 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:root.dark .home__hero:hover .home__hero-card {
+  box-shadow: var(--shadow-lg), 0 0 90px color-mix(in srgb, var(--alten-red) 24%, transparent);
+}
+
 /* Light reflection across the top edge of the glass card. */
 .home__hero-card::before {
   content: "";

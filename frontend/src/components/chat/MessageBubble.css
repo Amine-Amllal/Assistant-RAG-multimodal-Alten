@@ -27,6 +27,13 @@
 
 .message-avatar--user {
   background: var(--alten-red);
+  overflow: hidden;
+}
+
+.message-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .message-content {
@@ -56,6 +63,103 @@
   gap: var(--space-2);
   color: var(--gray-500);
   font-size: var(--fs-sm);
+}
+
+.message-bubble__markdown {
+  overflow-wrap: break-word;
+}
+
+.message-bubble__markdown > *:first-child {
+  margin-top: 0;
+}
+
+.message-bubble__markdown > *:last-child {
+  margin-bottom: 0;
+}
+
+.message-bubble__markdown p {
+  margin: 0 0 var(--space-3);
+}
+
+.message-bubble__markdown h1,
+.message-bubble__markdown h2,
+.message-bubble__markdown h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+
+.message-bubble__markdown ul,
+.message-bubble__markdown ol {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.message-bubble__markdown li {
+  margin-bottom: var(--space-1);
+}
+
+.message-bubble__markdown li > p {
+  margin: 0;
+}
+
+.message-bubble__markdown strong {
+  font-weight: var(--fw-semibold);
+}
+
+.message-bubble__markdown code {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  font-size: 0.9em;
+}
+
+.message-bubble__markdown pre {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin: 0 0 var(--space-3);
+}
+
+.message-bubble__markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.message-bubble__markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 var(--space-3);
+}
+
+.message-bubble__markdown th,
+.message-bubble__markdown td {
+  border: var(--border-hairline);
+  padding: var(--space-2);
+  text-align: left;
+}
+
+.message-bubble__markdown a {
+  color: var(--alten-blue);
+}
+
+.message-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--alten-blue) 8%, transparent);
+  color: var(--alten-blue);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+.message-scope svg {
+  width: 13px;
+  height: 13px;
 }
 
 .message-sources {

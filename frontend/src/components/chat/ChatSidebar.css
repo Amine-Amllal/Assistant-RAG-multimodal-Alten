@@ -25,14 +25,15 @@
   color: var(--gray-500);
 }
 
-.chat-sidebar__suggestions {
+.chat-sidebar__conversations {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   list-style: none;
+  overflow-y: auto;
 }
 
-.chat-sidebar__suggestion {
+.chat-sidebar__conversation {
   width: 100%;
   text-align: left;
   background: var(--alten-white);
@@ -43,11 +44,20 @@
   color: var(--gray-900);
   cursor: pointer;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.chat-sidebar__suggestion:hover {
+.chat-sidebar__conversation:hover {
   border-color: var(--alten-red);
   color: var(--alten-black);
+}
+
+.chat-sidebar__conversation--active {
+  border-color: var(--alten-black);
+  background: var(--gray-100);
+  font-weight: var(--fw-semibold);
 }
 
 .chat-sidebar__hint {

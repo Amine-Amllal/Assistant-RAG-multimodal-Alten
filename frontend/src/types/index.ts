@@ -39,7 +39,7 @@ export interface ChatSource {
   excerpt?: string;
   imageUrl?: string;
   caption?: string;
-  score: number;
+  rank: number;
 }
 
 export type MessageRole = "user" | "assistant";
@@ -51,4 +51,18 @@ export interface ChatMessage {
   sources?: ChatSource[];
   isStreaming?: boolean;
   createdAt: string;
+  conversationId?: string;
+  scopeGroups?: string[];
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+export interface ConversationDetail {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
 }

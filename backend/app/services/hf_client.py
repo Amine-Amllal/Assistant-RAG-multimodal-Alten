@@ -55,6 +55,13 @@ def _vlm_client() -> InferenceClient:
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
+    if settings.EMBEDDING_BACKEND == "mistral":
+        # Imported lazily to avoid a circular import (mistral_client imports vector_store).
+        from app.services import mistral_client
+
+        return mistral_client.embed_texts(texts)
+    if settings.EMBEDDING_BACKEND == "local":
+        return _embed_texts_local(texts)
     client = _embedding_client()
     embeddings: list[list[float]] = []
     for text in texts:
@@ -66,6 +73,62 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 @_retry_transient_hf_error
 def _embed_one(client: InferenceClient, text: str):
     return client.feature_extraction(text, model=settings.HF_EMBEDDING_MODEL, truncate=True)
+
+
+@lru_cache
+def _local_embedding_model():
+    # Imported lazily so the HF-Inference path doesn't pay torch/transformers import cost.
+    import torch  # noqa: F401  (ensures a clear error here if torch is missing)
+    from transformers import AutoModel, AutoTokenizer
+
+    from pathlib import Path
+
+    path = settings.LOCAL_EMBEDDING_MODEL_PATH or settings.HF_EMBEDDING_MODEL
+    # A configured folder that isn't there yet is the common setup mistake; surface it plainly
+    # instead of transformers' confusing "Repo id must use alphanumeric chars" (it falls back to
+    # treating a missing local path as a Hub repo id).
+    if settings.LOCAL_EMBEDDING_MODEL_PATH and not Path(path).is_dir():
+        raise FileNotFoundError(
+            f"EMBEDDING_BACKEND=local but no model folder at '{Path(path).resolve()}'. "
+            f"Download it on an unrestricted machine with: "
+            f"huggingface-cli download {settings.HF_EMBEDDING_MODEL} --local-dir <dir>, "
+            f"then copy <dir> here and point LOCAL_EMBEDDING_MODEL_PATH at it."
+        )
+    # local_files_only=True: never reach for the network — on a blocked network a download
+    # attempt would hang/fail instead of erroring clearly that the weights aren't present.
+    tokenizer = AutoTokenizer.from_pretrained(path, local_files_only=True)
+    # .float() upcasts to fp32 regardless of how the weights were saved: the offline copy is
+    # stored in fp16 to fit under GitHub's 2 GB release-asset limit, but CPU inference wants
+    # fp32 (many fp16 ops are unsupported/slow on CPU). The precision round-trip is negligible
+    # for retrieval ranking.
+    model = AutoModel.from_pretrained(path, local_files_only=True).float()
+    model.eval()
+    return tokenizer, model
+
+
+def _embed_texts_local(texts: list[str]) -> list[list[float]]:
+    import torch
+
+    tokenizer, model = _local_embedding_model()
+    embeddings: list[list[float]] = []
+    # Batch to keep memory bounded on CPU; e5-large is ~560M params.
+    batch_size = 16
+    for start in range(0, len(texts), batch_size):
+        batch = texts[start : start + batch_size]
+        encoded = tokenizer(
+            batch, padding=True, truncation=True, max_length=512, return_tensors="pt"
+        )
+        with torch.no_grad():
+            output = model(**encoded)
+        # e5 pools by masked mean over tokens, then L2-normalizes — the same recipe HF's
+        # serverless endpoint (TEI) used, so these vectors match the existing Chroma index
+        # (stored vectors have norm 1.0). No "query:"/"passage:" prefix, to stay identical
+        # to how the corpus was originally ingested (raw text, no prefix).
+        mask = encoded["attention_mask"].unsqueeze(-1).float()
+        pooled = (output.last_hidden_state * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1e-9)
+        normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+        embeddings.extend(normalized.cpu().tolist())
+    return embeddings
 
 
 def caption_image(image: Image.Image, *, document_name: str, figure_caption: str | None = None) -> str:

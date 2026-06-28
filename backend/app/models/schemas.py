@@ -65,7 +65,10 @@ class ChatSource(BaseModel):
     excerpt: Optional[str] = None
     imageUrl: Optional[str] = None
     caption: Optional[str] = None
-    score: float
+    # 1-based position in the final ranked list (after hybrid dense+BM25 fusion), not a
+    # relevance percentage — RRF scores are only meaningful relative to each other within
+    # one query, so showing them as an absolute "% match" was misleading users.
+    rank: int
 
 
 class ChatMessage(BaseModel):
@@ -75,7 +78,28 @@ class ChatMessage(BaseModel):
     sources: Optional[list[ChatSource]] = None
     isStreaming: Optional[bool] = None
     createdAt: str
+    conversationId: Optional[str] = None
+    # When the scope was chosen automatically by the LLM, the group names it picked.
+    # Transient (not persisted) — only set on the live response so the UI can show what
+    # was searched; None when scope was manual/all or on reloaded history.
+    scopeGroups: Optional[list[str]] = None
 
 
 class ChatRequest(BaseModel):
     question: str
+    documentIds: Optional[list[str]] = None
+    conversationId: Optional[str] = None
+    # When true (and no explicit documentIds), the LLM picks which groups to search.
+    autoScope: bool = False
+
+
+class ConversationSummary(BaseModel):
+    id: str
+    title: str
+    updatedAt: str
+
+
+class ConversationDetail(BaseModel):
+    id: str
+    title: str
+    messages: list[ChatMessage]

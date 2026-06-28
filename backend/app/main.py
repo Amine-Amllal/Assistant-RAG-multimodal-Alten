@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api import routes_chat, routes_documents, routes_groups
 from app.config import settings
 from app.database import init_db
+from app.services.ingestion_queue import start_worker
 from app.storage.paths import ensure_data_dirs, images_dir
 
 app = FastAPI(title="Multimodal RAG Assistant API")
@@ -27,3 +28,4 @@ def on_startup() -> None:
     ensure_data_dirs()
     init_db()
     app.mount("/static/images", StaticFiles(directory=str(images_dir())), name="images")
+    start_worker()

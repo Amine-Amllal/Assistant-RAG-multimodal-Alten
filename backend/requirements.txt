@@ -6,10 +6,13 @@ python-multipart
 # --- Config ---
 pydantic-settings
 
+# --- Auth (Clerk session token verification) ---
+PyJWT[crypto]
+
 # --- Document parsing / chunking ---
 docling
 docling-core
-transformers          # tokenizer only (HybridChunker), no local model inference
+transformers          # HybridChunker tokenizer + local embedding backend (EMBEDDING_BACKEND=local)
 
 # --- Hugging Face Inference API (embeddings + VLM image captioning) ---
 huggingface_hub
@@ -20,6 +23,15 @@ mistralai
 
 # --- Vector store ---
 chromadb
+
+# --- Sparse/keyword retrieval (hybrid search alongside the dense vector search above) ---
+rank_bm25
+
+# --- Conversation cache. `redis` is the client for a real server (OCI Cache in prod);
+# `fakeredis` provides an in-process backend (REDIS_URL=memory://) so caching works on the
+# locked dev PC with no server to install. ---
+redis
+fakeredis
 
 httpx
 

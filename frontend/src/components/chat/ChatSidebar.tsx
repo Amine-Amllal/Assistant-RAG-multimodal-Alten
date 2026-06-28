@@ -1,20 +1,22 @@
 import { useSidebarCollapsed } from "../layout/SidebarContext";
 import { Button } from "../ui/Button";
 import { PlusIcon } from "../ui/icons";
+import type { ConversationSummary } from "../../types";
 import "./ChatSidebar.css";
 
-const SUGGESTED_QUESTIONS = [
-  "Summarize the safety procedures in the hydraulic press manual",
-  "What figure shows the transformer architecture?",
-  "List the maintenance intervals for the robot arm",
-];
-
 interface ChatSidebarProps {
+  conversations: ConversationSummary[];
+  activeConversationId: string | null;
   onNewChat: () => void;
-  onSuggestionClick: (text: string) => void;
+  onSelectConversation: (id: string) => void;
 }
 
-export function ChatSidebar({ onNewChat, onSuggestionClick }: ChatSidebarProps) {
+export function ChatSidebar({
+  conversations,
+  activeConversationId,
+  onNewChat,
+  onSelectConversation,
+}: ChatSidebarProps) {
   const isCollapsed = useSidebarCollapsed();
 
   if (isCollapsed) {
@@ -34,20 +36,28 @@ export function ChatSidebar({ onNewChat, onSuggestionClick }: ChatSidebarProps) 
       </Button>
 
       <div className="chat-sidebar__section">
-        <span className="chat-sidebar__heading">Suggested questions</span>
-        <ul className="chat-sidebar__suggestions">
-          {SUGGESTED_QUESTIONS.map((question) => (
-            <li key={question}>
-              <button
-                type="button"
-                className="chat-sidebar__suggestion"
-                onClick={() => onSuggestionClick(question)}
-              >
-                {question}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <span className="chat-sidebar__heading">Conversations</span>
+        {conversations.length === 0 ? (
+          <p className="chat-sidebar__hint">Your past conversations will show up here.</p>
+        ) : (
+          <ul className="chat-sidebar__conversations">
+            {conversations.map((conversation) => (
+              <li key={conversation.id}>
+                <button
+                  type="button"
+                  className={
+                    conversation.id === activeConversationId
+                      ? "chat-sidebar__conversation chat-sidebar__conversation--active"
+                      : "chat-sidebar__conversation"
+                  }
+                  onClick={() => onSelectConversation(conversation.id)}
+                >
+                  {conversation.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="chat-sidebar__section chat-sidebar__section--bottom">

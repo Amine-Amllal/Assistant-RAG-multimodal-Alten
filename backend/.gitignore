@@ -5,3 +5,4 @@ __pycache__/
 .venv/
 data/
 docling_models_offline*
+e5_large_offline*

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 
 from app.models.schemas import (
@@ -15,7 +15,7 @@ from app.models.schemas import (
     DocumentNameUpdate,
 )
 from app.services import documents_repo, groups_repo, vector_store
-from app.services.ingestion import run_ingestion
+from app.services.ingestion_queue import enqueue
 from app.storage.paths import images_dir, markdown_dir, uploads_dir
 
 router = APIRouter()
@@ -146,9 +146,7 @@ def duplicate_document(document_id: str, payload: DocumentDuplicateRequest) -> D
 
 
 @router.post("/api/documents/upload", response_model=DocumentItem)
-async def upload_document(
-    file: UploadFile, background_tasks: BackgroundTasks, category: str | None = Form(default=None)
-) -> DocumentItem:
+async def upload_document(file: UploadFile, category: str | None = Form(default=None)) -> DocumentItem:
     extension = Path(file.filename or "").suffix.lower()
     if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {extension or 'unknown'}")
@@ -172,5 +170,5 @@ async def upload_document(
         file_path=str(stored_path),
     )
 
-    background_tasks.add_task(run_ingestion, document_id, document.name, stored_path)
+    enqueue(document_id, document.name, stored_path)
     return document

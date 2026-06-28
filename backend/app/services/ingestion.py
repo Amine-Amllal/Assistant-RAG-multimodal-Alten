@@ -58,6 +58,12 @@ def _caption_images(document_id: str, document_name: str, docling_doc) -> list[C
         )
         filename = f"picture_{i}.png"
         record.image.save(doc_images_dir / filename)
-        caption = hf_client.caption_image(record.image, document_name=document_name, figure_caption=record.caption)
+        vlm_caption = hf_client.caption_image(
+            record.image, document_name=document_name, figure_caption=record.caption
+        )
+        # Prefix with the figure's own caption from the document (e.g. "Figure 1: ...") when
+        # found — the VLM description rarely repeats the figure number itself, so without
+        # this prefix a literal keyword search for "Figure 1" has nothing to match against.
+        caption = f"{record.caption}\n{vlm_caption}" if record.caption else vlm_caption
         captioned.append(CaptionedImage(page=record.page, filename=filename, caption=caption))
     return captioned

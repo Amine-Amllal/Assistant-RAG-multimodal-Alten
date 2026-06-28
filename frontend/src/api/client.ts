@@ -1,4 +1,5 @@
-import type { ChatMessage, DocumentDetail, DocumentItem, Group } from "../types";
+import type { ChatMessage, ConversationDetail, ConversationSummary, DocumentDetail, DocumentItem, Group } from "../types";
+import { getAuthToken } from "../lib/authToken";
 
 async function errorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -7,6 +8,11 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   } catch {
     return fallback;
   }
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export async function fetchDocuments(): Promise<DocumentItem[]> {
@@ -30,17 +36,31 @@ export async function deleteDocument(id: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete document: ${res.status}`);
 }
 
-export async function fetchChatHistory(): Promise<ChatMessage[]> {
-  const res = await fetch("/api/chat/history");
-  if (!res.ok) throw new Error(`Failed to fetch chat history: ${res.status}`);
+export async function fetchConversations(): Promise<ConversationSummary[]> {
+  const res = await fetch("/api/conversations", { headers: await authHeaders() });
+  if (!res.ok) throw new Error(`Failed to fetch conversations: ${res.status}`);
   return res.json();
 }
 
-export async function sendChatMessage(question: string): Promise<ChatMessage> {
+export async function fetchConversation(id: string): Promise<ConversationDetail> {
+  const res = await fetch(`/api/conversations/${id}`, { headers: await authHeaders() });
+  if (!res.ok) throw new Error(`Failed to fetch conversation: ${res.status}`);
+  return res.json();
+}
+
+export async function sendChatMessage(
+  question: string,
+  options?: { documentIds?: string[]; conversationId?: string; autoScope?: boolean },
+): Promise<ChatMessage> {
   const res = await fetch("/api/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    body: JSON.stringify({
+      question,
+      documentIds: options?.documentIds?.length ? options.documentIds : undefined,
+      conversationId: options?.conversationId,
+      autoScope: options?.autoScope ?? false,
+    }),
   });
   if (!res.ok) throw new Error(`Failed to send message: ${res.status}`);
   return res.json();
