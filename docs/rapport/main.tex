@@ -1,65 +1,239 @@
-\documentclass[12pt,a4paper]{article}
-\usepackage[margin=2cm]{geometry}
+% =====================================================================
+%  Rapport de stage PFA - Assistant RAG Multimodal (ALTEN)
+%  Amine Amllal - ENSAM Meknès
+%  Compilation : pdflatex (x2 pour les références croisées)
+% =====================================================================
+\documentclass[11pt,a4paper,oneside]{report}
+
+% ----------------------- Encodage & langue ---------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[scaled=0.92]{helvet} % sans-serif pour titres / bandeaux
+\usepackage{microtype}
+
+% ----------------------- Mise en page --------------------------------
+\usepackage[a4paper,top=2.6cm,bottom=2.6cm,inner=2.8cm,outer=2.2cm,headheight=15pt]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\parskip}{4pt plus 1pt}
+
+% ----------------------- Couleurs ALTEN ------------------------------
+\usepackage{xcolor}
+\definecolor{altenred}{HTML}{E2231A}
+\definecolor{altengold}{HTML}{FFD400}
+\definecolor{altenblue}{HTML}{1B6FB5}
+\definecolor{altenbluedark}{HTML}{124E80}
+\definecolor{inkgray}{HTML}{3C3C3C}
+\definecolor{softgray}{HTML}{F4F6F8}
+
+% ----------------------- Graphiques & tableaux -----------------------
 \usepackage{graphicx}
+\graphicspath{{../images/}}
+\usepackage{tikz}
+\usetikzlibrary{calc,shadows}
+\usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{array}
-\pagestyle{empty}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{caption}
+\captionsetup{font=small,labelfont={bf,color=altenbluedark},labelsep=quad}
 
-\newcommand{\ensamlogo}{%
-  \IfFileExists{images/ensam_logo.png}{\includegraphics[width=0.48\textwidth]{images/ensam_logo.png}}{%
-    \fbox{\begin{minipage}[c][4.4cm][c]{0.48\textwidth}
-      \centering
-      {\Large\bfseries ENSAM MEKNES}\\[0.2cm]
-      {\small Universit\'e Moulay Ismail}
-    \end{minipage}}%
-  }%
+% ----------------------- Encadrés ------------------------------------
+\usepackage[most]{tcolorbox}
+\newtcolorbox{keybox}[1][Point clé]{%
+  enhanced,breakable,colback=altenblue!4,colframe=altenblue!70,
+  boxrule=0.6pt,arc=1.5mm,left=3mm,right=3mm,top=2mm,bottom=2mm,
+  title={\sffamily\bfseries #1},coltitle=white,
+  colbacktitle=altenblue!85,attach boxed title to top left={yshift=-2mm,xshift=3mm},
+  boxed title style={arc=1mm,boxrule=0pt}}
+\newtcolorbox{alertbox}[1][Contrainte]{%
+  enhanced,breakable,colback=altenred!4,colframe=altenred!70,
+  boxrule=0.6pt,arc=1.5mm,left=3mm,right=3mm,top=2mm,bottom=2mm,
+  title={\sffamily\bfseries #1},coltitle=white,
+  colbacktitle=altenred!80,attach boxed title to top left={yshift=-2mm,xshift=3mm},
+  boxed title style={arc=1mm,boxrule=0pt}}
+
+% ----------------------- Code ----------------------------------------
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{altenbluedark}\bfseries,
+  commentstyle=\color{inkgray!70}\itshape,
+  stringstyle=\color{altenred!80},
+  numbers=left,numberstyle=\tiny\color{inkgray!60},numbersep=6pt,
+  frame=single,rulecolor=\color{altenblue!40},
+  backgroundcolor=\color{softgray},
+  breaklines=true,showstringspaces=false,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {à}{{\`a}}1 {ù}{{\`u}}1
+           {ô}{{\^o}}1 {î}{{\^i}}1 {ç}{{\c c}}1 {É}{{\'E}}1 {È}{{\`E}}1
+           {â}{{\^a}}1 {û}{{\^u}}1 {ë}{{\"e}}1 {ï}{{\"i}}1 {'}{{'}}1
 }
 
-\newcommand{\altenlogo}{%
-  \IfFileExists{images/alten_logo.png}{\includegraphics[width=0.54\textwidth]{images/alten_logo.png}}{%
-    \fbox{\begin{minipage}[c][4.4cm][c]{0.54\textwidth}
-      \centering
-      {\Huge\bfseries ALTEN}
-    \end{minipage}}%
-  }%
-}
+% ----------------------- Titres de chapitres/sections ----------------
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily}
+  {\begin{tikzpicture}[remember picture]
+     \node[fill=altenblue,text=white,font=\sffamily\bfseries\Huge,
+           minimum width=1.9cm,minimum height=1.9cm,rounded corners=2pt] (num) {\thechapter};
+     \node[anchor=west,xshift=2mm,font=\sffamily\bfseries\large,text=altenbluedark]
+           at (num.east) {Chapitre};
+   \end{tikzpicture}}
+  {8pt}
+  {\begin{tikzpicture}
+     \fill[altenred] (0,0) rectangle (2.2cm,1.2mm);
+     \fill[altengold] (2.2cm,0) rectangle (3.0cm,1.2mm);
+   \end{tikzpicture}\\[6pt]
+   \Huge\bfseries\color{inkgray}}
+  []
+\titleformat{name=\chapter,numberless}[display]
+  {\normalfont\sffamily}{}{0pt}
+  {\begin{tikzpicture}
+     \fill[altenred] (0,0) rectangle (2.2cm,1.2mm);
+     \fill[altengold] (2.2cm,0) rectangle (3.0cm,1.2mm);
+   \end{tikzpicture}\\[6pt]
+   \Huge\bfseries\color{inkgray}}
+  []
+\titlespacing*{\chapter}{0pt}{-10pt}{28pt}
+\titleformat{\section}{\sffamily\Large\bfseries\color{altenbluedark}}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\sffamily\large\bfseries\color{inkgray}}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}{\sffamily\normalsize\bfseries\color{altenblue}}{\thesubsubsection}{0.8em}{}
 
+% ----------------------- En-têtes / pieds de page --------------------
+\usepackage{fancyhdr}
+\usepackage{etoolbox}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\sffamily\small\color{inkgray}\rightmark}
+\fancyfoot[L]{\sffamily\footnotesize\color{inkgray!70}Assistant RAG Multimodal - ALTEN}
+\fancyfoot[R]{\sffamily\small\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{\color{altenblue!60}\hrule width\headwidth height 0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[R]{\sffamily\small\thepage}}
+
+% ----------------------- Hyperliens ----------------------------------
+\usepackage[hidelinks,pdftitle={Assistant RAG Multimodal - Rapport de stage PFA},
+            pdfauthor={Amine Amllal}]{hyperref}
+\hypersetup{colorlinks=true,linkcolor=altenbluedark,citecolor=altenbluedark,urlcolor=altenblue}
+
+% ----------------------- Figure avec placeholder ---------------------
+% \rapportfig[largeur]{fichier.png}{légende}{label}
+% Si docs/images/<fichier> n'existe pas encore, un cadre placeholder est
+% affiché à la place, le rapport compile donc avant génération des images.
+\newcommand{\rapportfig}[4][0.85]{%
+\begin{figure}[!htb]\centering
+\IfFileExists{../images/#2}{\includegraphics[width=#1\linewidth]{#2}}{%
+\begin{tcolorbox}[colback=softgray,colframe=altenblue!50,width=#1\linewidth,
+                  halign=center,valign=center,height=4.2cm,arc=1.5mm,boxrule=0.6pt]
+\sffamily\color{inkgray}\textbf{Figure à insérer}\\[2mm]
+\texttt{docs/images/\detokenize{#2}}\\[2mm]
+\footnotesize voir \texttt{docs/image\_generation\_guide.md}
+\end{tcolorbox}}%
+\caption{#3}\label{#4}
+\end{figure}}
+
+% =====================================================================
 \begin{document}
 
+% ============================ PAGE DE GARDE ==========================
 \begin{titlepage}
+\begin{tikzpicture}[remember picture,overlay]
+  % Bandeau supérieur tricolore
+  \fill[altenblue]  (current page.north west) rectangle ([yshift=-4mm]current page.north east);
+  \fill[altenred]   ([yshift=-4mm]current page.north west) rectangle ([yshift=-6.5mm]current page.north east);
+  \fill[altengold]  ([yshift=-6.5mm]current page.north west) rectangle ([yshift=-8mm]current page.north east);
+  % Bandeau inférieur
+  \fill[altengold]  ([yshift=8mm]current page.south west) rectangle ([yshift=6.5mm]current page.south east);
+  \fill[altenred]   ([yshift=6.5mm]current page.south west) rectangle ([yshift=4mm]current page.south east);
+  \fill[altenblue]  ([yshift=4mm]current page.south west) rectangle (current page.south east);
+\end{tikzpicture}
+
 \begin{center}
-\vspace*{0.8cm}
+\vspace*{2mm}
+\begin{minipage}{0.26\textwidth}\centering
+  \IfFileExists{../images/umi.png}{\includegraphics[height=2cm]{umi.png}}{\textbf{UMI}}
+\end{minipage}\hspace{1.2cm}%
+\begin{minipage}{0.26\textwidth}\centering
+  \IfFileExists{../images/ensam_only.png}{\includegraphics[height=2cm]{ensam_only.png}}{\textbf{ENSAM}}
+\end{minipage}\hspace{1.2cm}%
+\begin{minipage}{0.26\textwidth}\centering
+  \IfFileExists{../images/alten.png}{\includegraphics[height=2.6cm]{alten.png}}{\textbf{ALTEN}}
+\end{minipage}
 
-\begin{minipage}[t]{0.48\textwidth}
+\vspace{8mm}
+{\sffamily\color{inkgray}
+École Nationale Supérieure d'Arts et Métiers --- Meknès\\
+Université Moulay Ismaïl\\[1mm]
+Filière : Intelligence Artificielle \& Technologies des Données}
+
+\vspace{12mm}
+{\sffamily\bfseries\large\color{altenbluedark} RAPPORT DE STAGE\\ Projet de Fin d'Année (PFA)}
+
+\vspace{9mm}
+\begin{tcolorbox}[enhanced,colback=white,colframe=altenblue,boxrule=1pt,arc=2mm,
+                  drop shadow={shadow xshift=1mm,shadow yshift=-1mm,opacity=0.15},
+                  left=6mm,right=6mm,top=5mm,bottom=5mm]
 \centering
-\ensamlogo
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.48\textwidth}
-\centering
-\altenlogo
-\end{minipage}
+{\sffamily\bfseries\LARGE\color{inkgray}
+Conception et réalisation d'un assistant\\[1.5mm]
+RAG multimodal (texte + images)\\[1.5mm]
+pour l'interrogation de documentation technique}\\[4mm]
+{\sffamily\color{altenred}\rule{2.2cm}{1.2pt}}\hspace{1mm}%
+{\sffamily\color{altengold}\rule{0.8cm}{1.2pt}}
+\end{tcolorbox}
+
+\vspace{11mm}
+{\sffamily\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{r@{\hspace{6mm}}l}
+\textcolor{altenbluedark}{\bfseries Réalisé par} & Amine Amllal \\
+\textcolor{altenbluedark}{\bfseries Encadré par} & DARKAOUI Hatim \\
+\textcolor{altenbluedark}{\bfseries Entreprise d'accueil} & ALTEN \\
+\textcolor{altenbluedark}{\bfseries Durée du stage} & 8 semaines (mai -- juillet 2026) \\
+\end{tabular}}
 
 \vfill
-
-{\Large\bfseries Rapport de Projet de Fin d'Ann\'ee}\\[1.2cm]
-
-{\huge\bfseries Assistant RAG multimodal expos\'e via MCP interrogation de documents techniques (texte + images)}\\[1.8cm]
-
-\noindent
-\begin{minipage}[t]{0.45\textwidth}
-\raggedright
-{\bfseries R\'ealis\'e par}\\[0.2cm]
-AMLLAL Amine
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.45\textwidth}
-\raggedleft
-{\bfseries Encadr\'e par}\\[0.2cm]
-M. DARKAOUI Hatim
-\end{minipage}
-
-\vfill
+{\sffamily\color{inkgray} Année universitaire 2025--2026}
+\vspace*{8mm}
 \end{center}
 \end{titlepage}
+
+% ============================ FRONT MATTER ===========================
+\pagenumbering{roman}
+
+\input{frontmatter}
+
+\cleardoublepage
+\pdfbookmark{Sommaire}{toc}
+\tableofcontents
+
+\cleardoublepage
+\phantomsection\addcontentsline{toc}{chapter}{Liste des figures}
+\listoffigures
+
+\cleardoublepage
+\phantomsection\addcontentsline{toc}{chapter}{Liste des tableaux}
+\listoftables
+
+\input{abreviations}
+
+% ============================ CORPS ==================================
+\cleardoublepage
+\pagenumbering{arabic}
+
+\input{introduction}
+\input{chapitre1}
+\input{chapitre2}
+\input{chapitre3}
+\input{conclusion}
+
+% ============================ BIBLIOGRAPHIE ==========================
+\input{bibliographie}
+
+% ============================ ANNEXES ================================
+\input{annexes}
 
 \end{document}

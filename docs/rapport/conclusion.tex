@@ -1,0 +1,68 @@
+% ============================ CONCLUSION GÉNÉRALE ====================
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+\markboth{Conclusion générale}{Conclusion générale}
+
+Ce stage de Projet de Fin d'Année avait pour ambition de rendre interrogeable en langage
+naturel un corpus de documentation technique, \emph{y compris son contenu visuel}, et de
+restituer des réponses fiables et vérifiables. Cet objectif est atteint : l'assistant RAG
+multimodal développé couvre l'intégralité de la chaîne, du téléversement d'un PDF brut à la
+réponse citée illustrée par la figure pertinente.
+
+Sur le plan technique, le projet démontre la maîtrise d'un spectre large et actuel :
+analyse documentaire par apprentissage profond (Docling, TableFormer), découpage sémantique
+contextualisé, description de figures par modèle de vision-langage (Gemma-3 27B),
+représentations vectorielles et bases vectorielles (mistral-embed, ChromaDB), recherche
+hybride dense/lexicale fusionnée par RRF, ingénierie de prompts pour la génération
+contrainte et le routage (Mistral), développement d'API REST (FastAPI, Pydantic),
+authentification moderne (Clerk, JWT/JWKS), interface web réactive (React, TypeScript,
+Vite) et évaluation quantitative de systèmes RAG (RAGAS, juge LLM indépendant). Les
+résultats de l'évaluation (rappel de contexte parfait, pertinence des réponses de 0{,}93)
+valident les choix d'architecture.
+
+Sur le plan de l'ingénierie, la leçon la plus formatrice du stage tient peut-être à son
+environnement : développer un système dépendant de modèles d'IA distants sur un poste
+verrouillé, derrière un proxy d'inspection TLS, a imposé de diagnostiquer des pannes
+réseau opaques, d'arbitrer des changements de fournisseurs en cours de projet (bascule
+d'embeddings avec réindexation complète), et de concevoir chaque composant pour la
+résilience et la commutabilité. Ces compétences, comprendre \emph{pourquoi} une
+infrastructure échoue et concevoir \emph{avec} les contraintes plutôt que contre elles,
+sont précisément celles qu'exige l'industrialisation de l'IA en entreprise.
+
+Enfin, ce travail livre à ALTEN un démonstrateur complet et documenté, dont l'architecture
+sobre (stockage embarqué, services managés, configuration par environnement) est
+directement transposable sur Oracle Cloud Infrastructure.
+
+% ============================ PERSPECTIVES ===========================
+\chapter*{Perspectives}
+\addcontentsline{toc}{chapter}{Perspectives}
+\markboth{Perspectives}{Perspectives}
+
+Plusieurs prolongements, identifiés pendant le stage et volontairement hors périmètre,
+constituent des suites naturelles :
+
+\begin{itemize}
+  \item \textbf{Déploiement OCI complet} : conteneurisation du backend et du frontend sur
+        une VM OCI, cache basculé sur OCI Cache, stockage des fichiers sur Object Storage,
+        et éventuellement migration des métadonnées vers Oracle Autonomous Database
+        (palier Always Free) ;
+  \item \textbf{Re-ranking} : l'ajout d'un ré-ordonnanceur (cross-encoder ou LLM) sur les
+        candidats du retrieval hybride est la réponse directe aux scores de
+        \emph{context precision} observés sur les corpus à vocabulaire proche ;
+  \item \textbf{OCR des documents scannés} : activation de l'option OCR de Docling ou
+        recours à un service managé (Azure Document Intelligence), pour couvrir les
+        documents-images ;
+  \item \textbf{Captioning orienté signification} : itération sur le prompt du VLM pour
+        distinguer la description visuelle d'une figure de l'explication de sa
+        signification technique, l'axe identifié par le cas d'échec de faithfulness ;
+  \item \textbf{Jeu d'évaluation étendu et continu} : constitution d'un jeu de questions
+        de référence plus large (génération assistée puis validation humaine) et
+        intégration de l'évaluation RAGAS en contrôle continu de non-régression ;
+  \item \textbf{Streaming des réponses} : restitution token par token (SSE) pour améliorer
+        la latence perçue ;
+  \item \textbf{Embeddings multimodaux natifs} : à plus long terme, une voie ColPali
+        (late interaction sur pages entières) pourrait compléter ou remplacer le
+        captioning pour les corpus où la mise en page elle-même est porteuse de sens ;
+  \item \textbf{Gestion des droits documentaires} : cloisonnement du corpus par
+        utilisateur ou par équipe, prérequis d'un déploiement au-delà du démonstrateur.
+\end{itemize}

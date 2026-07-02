@@ -1,0 +1,335 @@
+% ============================ CHAPITRE 2 =============================
+\chapter{Analyse, conception et architecture de la solution}
+\label{chap:conception}
+
+\section{Introduction}
+
+Ce chapitre traduit le positionnement établi au chapitre précédent en une conception
+logicielle complète. Après une présentation générale du système et la formalisation des
+besoins fonctionnels et non fonctionnels, il décrit le pipeline de traitement, l'architecture
+globale à trois niveaux (frontend React, backend FastAPI, couche de persistance), le détail
+des composants du backend, les flux entre composants, la modélisation UML, le modèle de
+données, et s'achève sur la justification argumentée de chaque choix technologique.
+
+\section{Présentation générale du projet}
+
+Le système développé, baptisé \emph{Assistant RAG Multimodal}, est une application web
+complète permettant à un utilisateur authentifié de :
+
+\begin{itemize}
+  \item téléverser des documents techniques (PDF, Word, Excel) et les organiser en
+        \emph{groupes documentaires} (par exemple « Research Paper », « Technical Manual ») ;
+  \item suivre en temps réel les étapes d'ingestion de chaque document (analyse, découpage,
+        description des figures, vectorisation, indexation) ;
+  \item consulter chaque document indexé : rendu Markdown du contenu extrait, galerie des
+        figures avec leurs descriptions générées ;
+  \item poser des questions en langage naturel dans une interface conversationnelle
+        multi-conversations, avec choix du périmètre de recherche (tout le corpus, sélection
+        manuelle de documents, ou routage automatique par LLM) ;
+  \item obtenir des réponses \emph{sourcées} : chaque affirmation cite ses sources
+        \texttt{[Source N]}, et lorsque la source est une figure, l'image elle-même est
+        affichée sous la réponse.
+\end{itemize}
+
+Le corpus de démonstration comprend des articles de recherche fondateurs en apprentissage
+profond (\emph{Attention Is All You Need}, BERT, ResNet, ViT, YOLO) et des manuels
+d'ingénierie électrique (symboles de schémas, lecture de plans), deux familles choisies
+pour leur richesse en figures techniques.
+
+\section{Besoins fonctionnels}
+\label{sec:besoins-fonctionnels}
+
+\begin{table}[!htb]
+\centering\small
+\caption{Synthèse des besoins fonctionnels.}
+\label{tab:bf}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Réf.} & \textbf{Besoin} \\
+\midrule
+BF-01 & Téléverser des documents PDF, DOCX et XLSX, avec affectation à un groupe documentaire \\
+BF-02 & Ingestion automatique : analyse structurelle, découpage sémantique, extraction et description des figures, vectorisation, indexation \\
+BF-03 & Suivi de l'état d'ingestion (étape courante, succès, erreur) document par document \\
+BF-04 & Gestion des documents : consultation détaillée (Markdown + figures), renommage, changement de groupe, duplication, suppression, téléchargement du fichier source \\
+BF-05 & Gestion des groupes documentaires : création, renommage, suppression (avec repli des documents vers le groupe par défaut) \\
+BF-06 & Poser une question en langage naturel et recevoir une réponse générée, ancrée dans le corpus, avec citations \texttt{[Source N]} \\
+BF-07 & Restitution multimodale : affichage des figures sources sous la réponse lorsqu'elles sont citées \\
+BF-08 & Périmètre de recherche : corpus entier, documents sélectionnés manuellement, ou routage automatique de la question vers les groupes pertinents par LLM \\
+BF-09 & Historique de conversations par utilisateur : création, consultation, reprise, suppression \\
+BF-10 & Authentification des utilisateurs (inscription, connexion) et cloisonnement des conversations par utilisateur \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Besoins non fonctionnels}
+\label{sec:besoins-non-fonctionnels}
+
+\begin{table}[!htb]
+\centering\small
+\caption{Synthèse des besoins non fonctionnels.}
+\label{tab:bnf}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Réf.} & \textbf{Besoin} \\
+\midrule
+BNF-01 & \textbf{Fiabilité des réponses} : le LLM ne doit répondre qu'à partir des sources récupérées et déclarer explicitement l'absence de réponse plutôt que d'inventer \\
+BNF-02 & \textbf{Traçabilité} : toute réponse doit être vérifiable (document, page, extrait ou figure) \\
+BNF-03 & \textbf{Compatibilité environnement contraint} : fonctionnement sans droits administrateur, sans service système à installer, à travers un proxy d'inspection TLS \\
+BNF-04 & \textbf{Robustesse de l'ingestion} : un document en erreur ne doit ni bloquer la file ni corrompre l'index ; les erreurs sont enregistrées et affichées \\
+BNF-05 & \textbf{Stabilité sous charge locale} : les téléversements en rafale ne doivent pas saturer la machine ni provoquer de contention d'écriture (sérialisation des ingestions) \\
+BNF-06 & \textbf{Sécurité} : vérification cryptographique des jetons de session (RS256/JWKS), contrôle de propriété des conversations, CORS restrictif, validation des types de fichiers \\
+BNF-07 & \textbf{Portabilité cloud} : déploiement cible sur OCI sans refonte (stockage embarqué, cache commutable vers un Redis managé par simple variable d'environnement) \\
+BNF-08 & \textbf{Qualité mesurable} : le système doit être évaluable quantitativement (métriques RAGAS reproductibles) \\
+BNF-09 & \textbf{Coût maîtrisé} : recours aux offres gratuites/économiques des fournisseurs de modèles (Mistral, DeepInfra via Hugging Face, Groq pour l'évaluation) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Principe général du pipeline}
+\label{sec:pipeline}
+
+Le système s'organise en deux chaînes asynchrones l'une de l'autre : une chaîne
+d'\textbf{ingestion} (hors ligne, déclenchée par chaque téléversement) et une chaîne de
+\textbf{restitution} (en ligne, déclenchée par chaque question). La
+figure~\ref{fig:pipeline-global} en donne la vue d'ensemble.
+
+\rapportfig[0.98]{pipeline_global.pdf}{Pipeline fonctionnel complet : chaîne d'ingestion
+(à gauche) et chaîne de restitution (à droite), articulées autour de l'index unifié
+ChromaDB + BM25.}{fig:pipeline-global}
+
+\subsection{Chaîne d'ingestion}
+\begin{enumerate}
+  \item \textbf{Analyse structurelle (Docling)} : le document est converti en une
+        représentation structurée (sections, paragraphes, tableaux, figures avec leurs
+        légendes et numéros de pages). Le backend d'analyse PDF retenu est
+        \texttt{pypdfium2}, plus robuste en mémoire que le backend par défaut ;
+  \item \textbf{Export Markdown} : le contenu structuré est exporté en Markdown et conservé
+        pour la consultation dans l'interface ;
+  \item \textbf{Découpage sémantique} : le \emph{HybridChunker} de Docling produit des
+        chunks respectant la structure logique et la limite de 512 tokens, chacun
+        \emph{contextualisé} (préfixé par ses titres de sections) et rattaché à sa page ;
+  \item \textbf{Extraction et description des figures} : chaque image est sauvegardée sur
+        disque puis décrite par le VLM Gemma-3 27B ; la légende d'origine trouvée par
+        Docling (« Figure 1 : ... ») est préfixée à la description générée, pour que la
+        recherche lexicale sur « Figure 1 » ait une prise ;
+  \item \textbf{Vectorisation} : chunks de texte et descriptions de figures sont plongés
+        dans le même espace vectoriel par \texttt{mistral-embed} (1024 dimensions,
+        vecteurs normalisés L2), par lots de 32 ;
+  \item \textbf{Indexation} : les vecteurs, textes et métadonnées (document, page, type
+        \texttt{text}/\texttt{image}, chemin de l'image) sont insérés dans la collection
+        ChromaDB ; l'index BM25 en mémoire est marqué à reconstruire.
+\end{enumerate}
+
+\subsection{Chaîne de restitution}
+\begin{enumerate}
+  \item \textbf{Périmètre} : si l'utilisateur n'a pas sélectionné de documents et a activé
+        le périmètre automatique, un appel LLM route la question vers les groupes
+        documentaires plausiblement pertinents (avec repli conservateur sur tout le corpus) ;
+  \item \textbf{Recherche hybride} : la question est vectorisée, puis deux recherches sont
+        lancées avec sur-échantillonnage (\(3 \times k\)) : dense (ChromaDB) et lexicale
+        (BM25) ; leurs classements sont fusionnés par RRF et les \(k=5\) meilleurs chunks
+        sont retenus ;
+  \item \textbf{Génération contrainte} : les chunks numérotés (avec document et page) sont
+        injectés dans le prompt de \texttt{mistral-small-latest}, dont les instructions
+        imposent de ne répondre qu'à partir des sources, de citer \texttt{[Source N]} et de
+        signaler l'absence de réponse ;
+  \item \textbf{Restitution sourcée} : la réponse est renvoyée avec la liste structurée des
+        sources ; celles de type figure portent l'URL de l'image, affichée par le frontend.
+\end{enumerate}
+
+\section{Architecture globale du système}
+\label{sec:archi-globale}
+
+L'architecture (figure~\ref{fig:archi-globale}) suit un découpage classique en trois
+niveaux, enrichi d'une couche de services d'IA externes :
+
+\begin{itemize}
+  \item \textbf{Frontend} : SPA React 18 + TypeScript servie par Vite, intégrant le SDK
+        Clerk pour l'authentification ; elle dialogue avec le backend en JSON/HTTP en
+        joignant le jeton de session à chaque requête ;
+  \item \textbf{Backend} : application FastAPI exposant trois familles de routes
+        (\texttt{/api/documents}, \texttt{/api/groups}, \texttt{/api/chat} +
+        \texttt{/api/conversations}), un serveur de fichiers statiques pour les images
+        extraites, et un \emph{worker} d'ingestion sur file en arrière-plan ;
+  \item \textbf{Persistance} : SQLite (métadonnées des documents, groupes, conversations,
+        messages), ChromaDB persistant (vecteurs + textes + métadonnées), système de
+        fichiers (fichiers sources, exports Markdown, images extraites), cache Redis
+        commutable (FakeRedis en développement, OCI Cache en production) ;
+  \item \textbf{Services d'IA externes} : API Mistral (embeddings \texttt{mistral-embed}
+        et génération \texttt{mistral-small-latest}), API Hugging Face Inference /
+        DeepInfra (captioning Gemma-3 27B), Clerk (JWKS de vérification des jetons),
+        Groq (juge Llama 3.3 70B, pour l'évaluation uniquement).
+\end{itemize}
+
+\rapportfig[0.98]{architecture_globale.png}{Architecture globale : SPA React, API FastAPI,
+couche de persistance embarquée et services d'IA externes.}{fig:archi-globale}
+
+\section{Architecture du backend}
+\label{sec:archi-backend}
+
+Le backend suit une organisation en couches nettes (routes, services, stockage), sans
+framework d'orchestration intermédiaire (figure~\ref{fig:classes-backend}) :
+
+\begin{description}
+  \item[\texttt{api/}] les routeurs FastAPI (\texttt{routes\_documents},
+    \texttt{routes\_groups}, \texttt{routes\_chat}) : validation des entrées (schémas
+    Pydantic), contrôle d'accès, orchestration des services ; aucune logique métier ;
+  \item[\texttt{services/}] le cœur métier, un module par responsabilité :
+    \texttt{docling\_parser} (analyse, découpage, extraction d'images),
+    \texttt{ingestion} et \texttt{ingestion\_queue} (pipeline et sérialisation),
+    \texttt{hf\_client} (embeddings multi-backends et captioning VLM),
+    \texttt{mistral\_client} (embeddings, génération, routage de groupes),
+    \texttt{vector\_store} (ChromaDB, BM25, fusion RRF),
+    \texttt{clerk\_auth} (vérification JWT),
+    \texttt{cache} (cache JSON fail-open),
+    et les dépôts \texttt{documents\_repo}, \texttt{groups\_repo},
+    \texttt{conversations\_repo} (accès SQLite) ;
+  \item[\texttt{storage/}] la résolution centralisée des chemins de données
+    (\texttt{uploads/}, \texttt{markdown/}, \texttt{images/}, \texttt{chroma/},
+    \texttt{app.db}) ;
+  \item[\texttt{config.py}] la configuration typée \texttt{pydantic-settings}, chargée
+    depuis \texttt{.env} : clés d'API, choix du backend d'embeddings, chemins des modèles
+    hors ligne, URL Redis, origines CORS.
+\end{description}
+
+\rapportfig[0.95]{uml_paquetages_backend.pdf}{Diagramme de paquetages du backend :
+dépendances entre routes, services et stockage.}{fig:classes-backend}
+
+\begin{keybox}[Un choix structurant : la file d'ingestion à worker unique]
+L'ingestion (Docling + VLM + embeddings) est lourde en CPU et en mémoire. Le traitement
+concurrent des téléversements en rafale saturait la machine et provoquait des contentions
+d'écriture SQLite/ChromaDB allant jusqu'à l'échec de documents. L'architecture retenue,
+une file en mémoire consommée par un \emph{unique} thread worker démarré avec
+l'application, garantit un traitement strictement séquentiel, dans l'ordre d'arrivée,
+quelle que soit la rafale. L'API reste, elle, parfaitement réactive : le téléversement
+répond immédiatement et l'interface suit la progression par interrogation périodique.
+\end{keybox}
+
+\section{Architecture du frontend}
+
+Le frontend est structuré par domaines fonctionnels : \texttt{components/auth} (pages et
+garde d'authentification Clerk), \texttt{components/documents} (vue corpus, carte et détail
+de document, dropzone de téléversement, galerie de figures), \texttt{components/chat}
+(conversation, bulles de messages avec rendu Markdown, cartes de sources, visionneuse de
+figures, sélecteur de périmètre documentaire), \texttt{components/layout} et
+\texttt{components/ui} (coquille applicative, navigation, composants réutilisables, bascule
+de thème clair/sombre). Un client API central (\texttt{api/client.ts}) joint le jeton Clerk
+à chaque appel ; le hook \texttt{useChat} encapsule l'état conversationnel ; le routage est
+assuré par React Router avec routes protégées.
+
+\rapportfig[0.9]{ui_chat.png}{Interface conversationnelle : réponse sourcée avec citations
+et figure affichée sous la réponse.}{fig:ui-chat}
+
+\rapportfig[0.9]{ui_documents.png}{Vue de gestion du corpus : groupes documentaires, état
+d'ingestion en temps réel et actions par document.}{fig:ui-documents}
+
+\section{Communication et flux entre composants}
+\label{sec:flux}
+
+Tous les échanges frontend--backend sont des appels REST JSON authentifiés par jeton
+Bearer, hormis les images servies statiquement (\texttt{/static/images/...}). Les deux flux
+majeurs sont modélisés en séquence : le flux d'ingestion
+(figure~\ref{fig:seq-ingestion}) illustre le découplage entre la requête de téléversement
+(synchrone, immédiate) et le traitement (asynchrone, séquentiel) ; le flux de question
+(figure~\ref{fig:seq-chat}) montre l'enchaînement routage automatique -- recherche hybride
+-- génération -- restitution sourcée.
+
+\rapportfig[0.98]{uml_sequence_ingestion.pdf}{Diagramme de séquence du flux d'ingestion
+d'un document.}{fig:seq-ingestion}
+
+\rapportfig[0.98]{uml_sequence_chat.pdf}{Diagramme de séquence du flux de
+question--réponse sourcée.}{fig:seq-chat}
+
+\section{Modélisation UML}
+\label{sec:uml}
+
+Outre les diagrammes de séquence ci-dessus, deux vues complètent la modélisation. Le
+diagramme de cas d'utilisation (figure~\ref{fig:usecase}) recense les interactions de
+l'utilisateur authentifié avec le système ; le diagramme de classes du modèle de données
+(figure~\ref{fig:modele-donnees}) est présenté en section suivante.
+
+\rapportfig[0.85]{uml_cas_utilisation.pdf}{Diagramme de cas d'utilisation de l'assistant
+RAG multimodal.}{fig:usecase}
+
+\section{Modèle de données}
+\label{sec:modele-donnees}
+
+La persistance repose sur une séparation stricte entre \emph{métadonnées relationnelles}
+(SQLite) et \emph{contenu vectorisé} (ChromaDB), reliés par l'identifiant de document
+(UUID) :
+
+\begin{itemize}
+  \item \textbf{SQLite}, quatre tables : \texttt{documents} (identité, groupe, état
+        d'ingestion, étape courante, message d'erreur, chemin du fichier, lien
+        \texttt{source\_document\_id} pour les duplicatas), \texttt{groups} (groupes
+        documentaires nommés, avec groupe par défaut non supprimable),
+        \texttt{conversations} (rattachées à un \texttt{user\_id} Clerk) et
+        \texttt{messages} (rôle, contenu, sources sérialisées en JSON, horodatage) ;
+  \item \textbf{ChromaDB}, une collection unique \texttt{documents} où chaque entrée
+        porte : le vecteur (1024 dim.), le texte (chunk ou description de figure) et les
+        métadonnées \texttt{\{document\_id, document\_name, page, chunk\_type
+        (text|image), image\_path\}} ; c'est ce champ \texttt{chunk\_type} qui matérialise
+        l'indexation multimodale unifiée ;
+  \item \textbf{Système de fichiers} : \texttt{uploads/} (originaux),
+        \texttt{markdown/} (exports), \texttt{images/<document\_id>/} (figures extraites).
+\end{itemize}
+
+Un point de conception notable : la \emph{duplication} d'un document ne copie ni fichier,
+ni vecteurs, ni images : le duplicata référence le document racine via
+\texttt{source\_document\_id}, et la consultation comme la suppression résolvent ce lien
+(seule la suppression du document racine détruit le contenu partagé).
+
+\rapportfig[0.95]{uml_modele_donnees.pdf}{Modèle de données : tables SQLite, collection
+ChromaDB et stockage fichiers, reliés par l'identifiant de document.}{fig:modele-donnees}
+
+\section{Justification des choix technologiques}
+\label{sec:choix-technos}
+
+\begin{table}[!htb]
+\centering\small
+\caption{Choix technologiques et justifications.}
+\label{tab:choix}
+\begin{tabularx}{\textwidth}{@{}p{3.1cm}p{3.4cm}X@{}}
+\toprule
+\textbf{Besoin} & \textbf{Choix} & \textbf{Justification} \\
+\midrule
+Analyse documentaire & Docling & Open source, détection de mise en page et TableFormer par apprentissage profond, extraction native des figures avec légendes, chunker sémantique intégré ; modèles téléchargeables hors ligne (indispensable derrière le proxy) \\
+Backend PDF & pypdfium2 & Le backend Docling par défaut provoquait des \texttt{std::bad\_alloc} sur des PDF à images volumineuses ; pypdfium2 est plus robuste en mémoire \\
+Embeddings & \texttt{mistral-embed} & Seule API d'embeddings de qualité \emph{accessible à travers Zscaler} (Hugging Face bloqué) ; 1024 dim., multilingue, batch natif ; backends alternatifs (HF Inference, local transformers) conservés et commutables par configuration \\
+Captioning VLM & Gemma-3 27B (DeepInfra) & Excellent rapport qualité/coût pour la description de figures techniques ; accessible via l'API unifiée Hugging Face Inference Providers \\
+Base vectorielle & ChromaDB & Embarquée et persistante : zéro serveur à installer (PC verrouillé), portage OCI trivial ; API de filtrage par métadonnées suffisante au besoin \\
+Retrieval lexical & \texttt{rank\_bm25} + RRF & Bibliothèque pure Python ; RRF fusionne les classements sans calibration de scores (constante $k=60$ de Cormack et al.) \\
+LLM de génération & \texttt{mistral-small-latest} & Qualité suffisante pour la synthèse contrainte, latence et coût faibles, API stable et accessible \\
+API backend & FastAPI & Validation Pydantic, documentation OpenAPI automatique, montage de fichiers statiques, écosystème Python (Docling, ChromaDB) \\
+Frontend & React 18 + Vite + TypeScript & SPA réactive, typage de bout en bout avec les schémas Pydantic, rechargement instantané \\
+Authentification & Clerk & Authentification déléguée complète (UI incluse) sans stockage de mots de passe ; vérification backend purement cryptographique (JWKS), sans appel réseau par requête \\
+Cache & Redis / FakeRedis & Même code en dev (FakeRedis en mémoire, aucun serveur) et en prod (OCI Cache), commutation par variable d'environnement ; conception \emph{fail-open} \\
+Évaluation & RAGAS + Groq (Llama 3.3 70B) & Métriques standardisées ; juge indépendant du système évalué pour éviter le biais d'auto-évaluation \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Deux arbitrages méritent un développement :
+
+\paragraph{Sans LangChain.} Le pipeline est assemblé directement sur les SDK natifs
+(\texttt{mistralai}, \texttt{huggingface\_hub}, \texttt{chromadb}). Pour un pipeline de
+cette taille, les abstractions de LangChain auraient ajouté une épaisseur difficile à
+auditer sans rien apporter : chaque étape (chunking, embeddings, fusion, prompt) est ici
+un module Python explicite de quelques dizaines de lignes, directement instrumentable,
+un atout décisif lors du diagnostic de qualité du retrieval.
+
+\paragraph{Captioning plutôt qu'embeddings multimodaux.} L'approche par description VLM
+(section~\ref{sec:approches}) a été préférée à CLIP/ColPali : elle conserve un index
+unique et un pipeline de retrieval inchangé, produit des descriptions réutilisées telles
+quelles dans l'interface (galerie de figures, cartes de sources), et ne requiert aucun
+modèle auto-hébergé, rédhibitoire sur le poste de développement.
+
+\section{Conclusion}
+
+L'architecture conçue répond aux besoins formalisés par un système à trois niveaux, sobre
+et entièrement auditable : une chaîne d'ingestion asynchrone sérialisée qui transforme des
+documents hétérogènes en un index multimodal unifié, et une chaîne de restitution qui
+combine routage LLM, recherche hybride RRF et génération contrainte citée. Chaque choix
+technologique a été arbitré au regard du triptyque qualité / contraintes d'environnement /
+portabilité OCI. Le chapitre suivant décrit la mise en œuvre concrète de cette
+architecture et sa validation expérimentale.

@@ -1,0 +1,52 @@
+% ============================ INTRODUCTION GÉNÉRALE ==================
+\chapter*{Introduction générale}
+\addcontentsline{toc}{chapter}{Introduction générale}
+\markboth{Introduction générale}{Introduction générale}
+
+Les organisations d'ingénierie produisent et consomment des volumes considérables de
+documentation technique : articles de recherche, manuels d'équipements, guides de normes,
+schémas et spécifications. Cette connaissance, essentielle au travail quotidien des
+ingénieurs, reste pourtant difficile d'accès : elle est enfermée dans des fichiers PDF ou
+Word hétérogènes, dont une partie significative de l'information est portée par des
+\emph{éléments visuels} (diagrammes d'architecture, schémas électriques, courbes de
+résultats, tableaux) que les moteurs de recherche classiques, fondés sur le texte seul,
+ignorent purement et simplement.
+
+L'émergence des grands modèles de langue (LLM) a ouvert une voie nouvelle : le paradigme
+RAG (\emph{Retrieval-Augmented Generation}) permet de coupler la capacité de synthèse d'un
+LLM à une base documentaire propre à l'organisation, en récupérant à chaque question les
+passages pertinents du corpus et en contraignant le modèle à y ancrer sa réponse. Le RAG
+répond ainsi aux deux limites majeures des LLM utilisés seuls : l'absence de connaissance
+des documents internes et la propension à l'hallucination. Toutefois, la majorité des
+systèmes RAG restent \emph{unimodaux} : ils n'indexent que le texte, et une question dont la
+réponse se trouve dans une figure reste sans réponse.
+
+C'est précisément le problème auquel s'attaque ce projet, réalisé dans le cadre d'un stage
+de Projet de Fin d'Année de huit semaines au sein d'\textbf{ALTEN}, leader mondial de
+l'ingénierie et du conseil en technologies. L'objectif du stage est de concevoir et de
+réaliser un \textbf{assistant RAG multimodal} capable d'interroger en langage naturel un
+corpus de documents techniques et de restituer des réponses sourcées mêlant extraits de
+texte et images pertinentes. Le projet couvre l'intégralité de la chaîne : ingestion et
+analyse structurelle des documents (Docling), description automatique des figures par un
+modèle de vision-langage, indexation vectorielle unifiée (ChromaDB), recherche hybride
+dense + lexicale, génération de réponses citées (Mistral AI), exposition par une API REST
+(FastAPI), interface de démonstration (React/TypeScript) et évaluation quantitative de la
+qualité des réponses (RAGAS).
+
+Une particularité de ce stage mérite d'être soulignée dès l'introduction : le développement
+s'est déroulé sur un \emph{poste professionnel verrouillé}, derrière un proxy d'inspection
+TLS (Zscaler), sans droits d'administration ni possibilité d'installer des services
+système. Ces contraintes, représentatives des environnements industriels réels, ont
+fortement structuré les choix techniques : préférence pour des API cloud accessibles,
+solutions embarquées sans serveur (SQLite, ChromaDB persistant, FakeRedis), modèles
+pré-téléchargés hors ligne ; ils constituent en eux-mêmes un retour d'expérience précieux.
+
+Le présent rapport s'articule en trois chapitres. Le \textbf{chapitre 1} dresse l'état de
+l'art des systèmes RAG et de leurs extensions multimodales, analyse les approches et outils
+existants, et positionne la solution proposée. Le \textbf{chapitre 2} présente l'analyse
+des besoins, la conception et l'architecture du système : pipeline fonctionnel,
+architecture logicielle, modélisation UML, modèle de données et justification des choix
+technologiques. Le \textbf{chapitre 3} détaille la réalisation : environnement de
+développement contraint, implémentation des composants, intégration des services tiers,
+sécurité applicative, évaluation RAGAS, résultats obtenus, difficultés rencontrées et
+limites. Une conclusion générale et des perspectives d'évolution clôturent le document.

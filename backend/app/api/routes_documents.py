@@ -20,7 +20,7 @@ from app.storage.paths import images_dir, markdown_dir, uploads_dir
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".xlsx"}
 DEFAULT_THUMBNAIL_COLOR = "blue"
 
 

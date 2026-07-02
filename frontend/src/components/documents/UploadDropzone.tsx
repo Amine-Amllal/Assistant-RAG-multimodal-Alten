@@ -34,7 +34,7 @@ export function UploadDropzone({ onFiles }: UploadDropzoneProps) {
         ref={inputRef}
         type="file"
         multiple
-        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        accept=".pdf,.doc,.docx,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         hidden
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
@@ -49,9 +49,9 @@ export function UploadDropzone({ onFiles }: UploadDropzoneProps) {
         </svg>
       </span>
       <p className="upload-dropzone__text">
-        <strong>Click to upload</strong> or drag and drop a PDF or Word document
+        <strong>Click to upload</strong> or drag and drop a PDF, Word, or Excel document
       </p>
-      <p className="upload-dropzone__hint">Technical manuals, specs, and research papers</p>
+      <p className="upload-dropzone__hint">Technical manuals, specs, research papers, and spreadsheets</p>
     </div>
   );
 }

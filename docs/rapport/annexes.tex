@@ -1,0 +1,31 @@
+% ============================ ANNEXES ================================
+\appendix
+\cleardoublepage
+\chapter{Principales routes de l'API REST}
+\label{annexe:api}
+
+\begin{table}[!htb]
+\centering\small
+\caption{Routes exposées par l'API FastAPI.}
+\label{tab:api}
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+\textbf{Méthode} & \textbf{Route} & \textbf{Rôle} \\
+\midrule
+POST & \texttt{/api/documents/upload} & Téléverser un document (PDF/DOCX/XLSX) et déclencher son ingestion \\
+GET & \texttt{/api/documents} & Lister les documents et leur état d'ingestion \\
+GET & \texttt{/api/documents/\{id\}} & Détail d'un document : métadonnées, Markdown, figures décrites \\
+GET & \texttt{/api/documents/\{id\}/download} & Télécharger le fichier source \\
+PATCH & \texttt{/api/documents/\{id\}/name} & Renommer un document \\
+PATCH & \texttt{/api/documents/\{id\}/category} & Changer le groupe d'un document \\
+POST & \texttt{/api/documents/\{id\}/duplicate} & Dupliquer un document (contenu partagé, sans recopie) \\
+DELETE & \texttt{/api/documents/\{id\}} & Supprimer un document (fichier, Markdown, images, vecteurs) \\
+GET / POST & \texttt{/api/groups} & Lister / créer les groupes documentaires \\
+PATCH / DELETE & \texttt{/api/groups/\{id\}} & Renommer / supprimer un groupe (repli des documents) \\
+POST & \texttt{/api/chat} & Poser une question (périmètre manuel ou automatique) et recevoir la réponse sourcée \\
+GET & \texttt{/api/conversations} & Lister les conversations de l'utilisateur authentifié \\
+GET & \texttt{/api/conversations/\{id\}} & Recharger une conversation et ses messages \\
+GET & \texttt{/static/images/...} & Servir les figures extraites (affichage des sources) \\
+\bottomrule
+\end{tabularx}
+\end{table}

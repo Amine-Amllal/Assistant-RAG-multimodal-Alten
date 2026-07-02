@@ -21,6 +21,11 @@ const STATUS_TONE: Record<DocumentItem["status"], "blue" | "yellow" | "red"> = {
   error: "red",
 };
 
+function fileTypeLabel(name: string): string {
+  const extension = name.split(".").pop()?.toUpperCase() ?? "";
+  return extension === "DOCX" ? "DOC" : extension || "DOC";
+}
+
 function formatUploadedAt(uploadedAt: string): string {
   const parsed = new Date(uploadedAt);
   if (Number.isNaN(parsed.getTime())) {
@@ -76,7 +81,7 @@ export function DocumentCard({
         }
       >
         <div className={`doc-card__thumb doc-card__thumb--${document.thumbnailColor}`} aria-hidden="true">
-          PDF
+          {fileTypeLabel(document.name)}
         </div>
 
         <div className="doc-card__body">

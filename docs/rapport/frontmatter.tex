@@ -1,0 +1,92 @@
+% ============================ REMERCIEMENTS ==========================
+\chapter*{Remerciements}
+\addcontentsline{toc}{chapter}{Remerciements}
+
+Au terme de ce stage de Projet de Fin d'Année, je tiens à exprimer ma profonde gratitude à
+l'ensemble des personnes qui ont contribué, de près ou de loin, à son bon déroulement.
+
+Mes remerciements s'adressent en premier lieu à M. DARKAOUI Hatim, mon encadrant au sein
+d'ALTEN, pour la confiance qu'il m'a accordée, la pertinence de ses orientations techniques
+et sa disponibilité tout au long de ces huit semaines. Ses retours réguliers m'ont permis de
+garder un cap clair entre l'ambition fonctionnelle du projet et les contraintes réelles d'un
+environnement industriel.
+
+Je remercie également l'ensemble des équipes d'ALTEN pour leur accueil chaleureux et pour
+l'environnement de travail stimulant dans lequel j'ai pu évoluer. Travailler au contact
+d'ingénieurs confrontés quotidiennement à des problématiques concrètes de gestion de
+documentation technique a donné tout son sens à ce projet.
+
+Ma reconnaissance va aussi au corps professoral de l'École Nationale Supérieure d'Arts et
+Métiers de Meknès, et en particulier aux enseignants de la filière Intelligence Artificielle
+\& Technologies des Données, dont les enseignements ont constitué le socle théorique sur
+lequel ce travail s'est appuyé.
+
+Enfin, je remercie ma famille et mes proches pour leur soutien constant.
+
+% ============================ RÉSUMÉ =================================
+\cleardoublepage
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Ce rapport présente la conception et la réalisation d'un \textbf{assistant de recherche
+documentaire multimodal} fondé sur le paradigme RAG (\emph{Retrieval-Augmented Generation}),
+développé au cours d'un stage PFA de huit semaines au sein d'ALTEN. L'objectif est de
+permettre à un ingénieur d'interroger en langage naturel un corpus de documents techniques
+(articles scientifiques, manuels d'ingénierie au format PDF ou Word) et d'obtenir des
+réponses \emph{sourcées}, combinant extraits textuels cités et figures pertinentes affichées
+directement dans l'interface.
+
+La chaîne de traitement réalisée couvre l'intégralité du cycle de vie documentaire :
+analyse structurelle des documents avec \textbf{Docling} (détection de mise en page,
+extraction des figures, reconstruction des tableaux), découpage sémantique par
+\emph{HybridChunker}, description automatique des figures par un modèle de vision-langage
+(\textbf{Gemma-3 27B}), vectorisation unifiée des chunks textuels et des descriptions
+d'images par \textbf{mistral-embed}, puis indexation dans \textbf{ChromaDB}. La phase de
+restitution repose sur une \textbf{recherche hybride} combinant similarité dense et BM25 par
+fusion de rangs réciproques (RRF), un routage automatique de la question vers les groupes
+documentaires pertinents par LLM, et la génération de la réponse par
+\textbf{mistral-small-latest} avec citation systématique des sources. Les capacités sont
+exposées par une API REST \textbf{FastAPI} et une interface \textbf{React/TypeScript}
+sécurisée par \textbf{Clerk}.
+
+La qualité du système a été évaluée avec le cadre \textbf{RAGAS}, en utilisant un juge LLM
+indépendant (Llama~3.3~70B). Les résultats obtenus (\emph{context recall} de 1{,}00,
+\emph{answer relevancy} de 0{,}93 et \emph{faithfulness} moyenne de 0{,}83) valident
+l'efficacité du retrieval hybride et de l'indexation multimodale, tout en identifiant des
+axes d'amélioration précis.
+
+\vspace{3mm}
+\noindent\textbf{Mots-clés :} RAG multimodal, LLM, embeddings, recherche hybride, BM25,
+RRF, Docling, ChromaDB, Mistral AI, VLM, FastAPI, React, RAGAS.
+
+% ============================ ABSTRACT ===============================
+\cleardoublepage
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+This report presents the design and implementation of a \textbf{multimodal
+Retrieval-Augmented Generation (RAG) assistant}, developed during an eight-week internship
+at ALTEN. The system enables engineers to query a corpus of technical documents (research
+papers and engineering manuals in PDF or Word format) in natural language, and to receive
+\emph{grounded} answers combining cited text excerpts and the relevant figures displayed
+directly in the user interface.
+
+The implemented pipeline covers the full document lifecycle: structural parsing with
+\textbf{Docling} (layout detection, figure extraction, table reconstruction), semantic
+chunking with the \emph{HybridChunker}, automatic figure description using a
+vision-language model (\textbf{Gemma-3 27B}), unified vectorization of text chunks and
+image descriptions with \textbf{mistral-embed}, and indexing into \textbf{ChromaDB}.
+Retrieval combines dense similarity search and BM25 keyword matching through reciprocal
+rank fusion (RRF), augmented by automatic LLM-based routing of each question to the
+relevant document groups. Answers are generated by \textbf{mistral-small-latest} with
+systematic source citation. All capabilities are exposed through a \textbf{FastAPI} REST
+API and a \textbf{React/TypeScript} interface secured with \textbf{Clerk} authentication.
+
+System quality was evaluated with the \textbf{RAGAS} framework, using an independent LLM
+judge (Llama~3.3~70B). The results (context recall of 1.00, answer relevancy of 0.93 and
+average faithfulness of 0.83) validate the effectiveness of hybrid retrieval and
+multimodal indexing, while identifying precise improvement paths.
+
+\vspace{3mm}
+\noindent\textbf{Keywords:} multimodal RAG, LLM, embeddings, hybrid search, BM25, RRF,
+Docling, ChromaDB, Mistral AI, VLM, FastAPI, React, RAGAS.

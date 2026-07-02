@@ -1,0 +1,284 @@
+% ============================ CHAPITRE 1 =============================
+\chapter{État de l'art des systèmes RAG multimodaux et positionnement du problème}
+\label{chap:etat-art}
+
+\section{Introduction}
+
+Ce premier chapitre pose le cadre scientifique et industriel du projet. Il présente
+d'abord le contexte de l'entreprise d'accueil et le domaine d'application (la recherche
+d'information dans la documentation technique d'ingénierie), puis introduit les concepts
+théoriques mobilisés : grands modèles de langue, représentations vectorielles
+(\emph{embeddings}), génération augmentée par récupération (RAG) et modèles de
+vision-langage (VLM). Il analyse ensuite les approches existantes pour rendre un corpus
+multimodal interrogeable, les outils disponibles sur le marché et dans la littérature,
+leurs limites, et conclut par le positionnement précis de la solution développée.
+
+\section{Contexte : la documentation technique chez ALTEN}
+
+\subsection{L'entreprise d'accueil}
+
+ALTEN est un groupe international d'ingénierie et de conseil en technologies (ETC), présent
+dans plus de trente pays. Le groupe accompagne les directions techniques et les directions
+des systèmes d'information de grands acteurs industriels (aéronautique, automobile,
+ferroviaire, énergie, télécommunications, sciences de la vie) sur l'ensemble du cycle de
+développement de leurs produits et systèmes. Les activités du groupe couvrent notamment
+l'ingénierie produit, les systèmes embarqués, les systèmes d'information industriels et,
+de plus en plus, la valorisation des données et l'intelligence artificielle.
+
+\subsection{Problématique métier}
+
+Par la nature même de ses activités, ALTEN manipule quotidiennement une documentation
+technique volumineuse et hétérogène : spécifications, manuels d'équipements, normes,
+articles de recherche, guides méthodologiques. Cette documentation présente trois
+caractéristiques qui rendent son exploitation difficile :
+
+\begin{itemize}
+  \item \textbf{Hétérogénéité des formats} : PDF issus de chaînes d'édition variées,
+        documents Word, classeurs Excel, avec des mises en page complexes (colonnes
+        multiples, tableaux imbriqués, en-têtes et pieds de page parasites) ;
+  \item \textbf{Information visuelle critique} : dans un manuel d'ingénierie électrique,
+        par exemple, la réponse à « que représente ce symbole ? » se trouve dans un
+        \emph{schéma}, pas dans un paragraphe ; les diagrammes d'architecture des articles
+        scientifiques concentrent souvent l'essentiel de la contribution ;
+  \item \textbf{Coût d'accès élevé} : retrouver une information précise suppose de savoir
+        dans quel document chercher, puis de le parcourir manuellement, un processus lent,
+        frustrant et non scalable.
+\end{itemize}
+
+Le stage répond à cette problématique par une question d'ingénierie précise :
+\emph{comment permettre à un ingénieur d'interroger en langage naturel un corpus de
+documents techniques, textes et figures compris, et d'obtenir une réponse fiable,
+vérifiable et illustrée ?}
+
+\section{Concepts et notions théoriques clés}
+\label{sec:concepts}
+
+\subsection{Grands modèles de langue (LLM)}
+
+Les grands modèles de langue sont des réseaux de neurones fondés sur l'architecture
+\emph{Transformer} \cite{vaswani2017attention}, pré-entraînés sur d'immenses corpus à
+prédire le token suivant. Cette architecture, introduite par Vaswani et al. en 2017,
+remplace la récurrence par un mécanisme d'\emph{auto-attention} qui met en relation tous
+les tokens d'une séquence en parallèle. Les modèles qui en découlent, de BERT
+\cite{devlin2019bert}, encodeur bidirectionnel pré-entraîné par MLM, aux modèles génératifs
+actuels (GPT-4o, Mistral, Llama, Gemma), présentent des capacités remarquables de
+compréhension et de génération de texte. Utilisés seuls, ils souffrent cependant de deux
+limites structurelles pour un usage documentaire : leur connaissance est figée à la date
+d'entraînement et n'inclut pas les documents internes d'une organisation, et ils peuvent
+produire des affirmations plausibles mais fausses (\emph{hallucinations}).
+
+\subsection{Embeddings et recherche sémantique}
+
+Un \emph{embedding} est une représentation d'un texte sous forme de vecteur dense de
+dimension fixe (1024 dimensions pour \texttt{mistral-embed}, utilisé dans ce projet),
+apprise de sorte que deux textes sémantiquement proches aient des vecteurs proches. La
+similarité entre une question et un passage se mesure alors par similarité cosinus (ou par
+distance euclidienne sur des vecteurs normalisés L2, ce qui revient au même classement).
+La \emph{recherche sémantique} consiste à vectoriser le corpus une fois pour toutes, à
+stocker ces vecteurs dans une \emph{base vectorielle}, puis, à chaque question, à
+rechercher les $k$ vecteurs les plus proches du vecteur de la question. Contrairement à la
+recherche lexicale, elle retrouve des passages pertinents même sans mot commun avec la
+question (synonymes, reformulations, traductions).
+
+\subsection{Recherche lexicale : BM25}
+
+BM25 \cite{robertson2009bm25} est la fonction de classement lexical de référence,
+héritière de TF-IDF : elle score un document selon la fréquence des termes de la requête
+qu'il contient, pondérée par leur rareté dans le corpus et par la longueur du document.
+Ses forces sont exactement complémentaires de celles des embeddings : elle excelle sur les
+correspondances \emph{exactes} (identifiants, références normatives, « Figure 1 »,
+acronymes), là où deux libellés proches (« Figure 1 » et « Figure 2 ») produisent des
+embeddings quasi identiques que la similarité cosinus ne sait pas départager.
+
+\subsection{Retrieval-Augmented Generation (RAG)}
+
+Le RAG \cite{lewis2020rag} articule ces briques en un pipeline en deux temps
+(figure~\ref{fig:rag-principe}) :
+
+\begin{enumerate}
+  \item \textbf{Récupération (retrieval)} : la question de l'utilisateur est vectorisée,
+        puis les passages du corpus les plus pertinents sont récupérés depuis l'index ;
+  \item \textbf{Génération augmentée} : ces passages sont injectés dans le prompt du LLM,
+        avec l'instruction explicite de ne répondre \emph{qu'à partir d'eux} et de citer
+        ses sources.
+\end{enumerate}
+
+Le LLM n'est donc plus une base de connaissances mais un \emph{moteur de synthèse
+contraint} : la connaissance vit dans l'index documentaire, actualisable à tout moment,
+et chaque affirmation de la réponse est traçable vers sa source.
+
+\rapportfig[0.9]{rag_principe.png}{Principe général du paradigme RAG : indexation hors
+ligne du corpus, puis récupération et génération contrainte à chaque question.}{fig:rag-principe}
+
+\subsection{Le découpage sémantique (chunking)}
+
+Les documents étant trop longs pour être vectorisés d'un bloc (et les fenêtres de contexte
+des modèles d'embeddings limitées, typiquement 512 tokens), le corpus doit être découpé en
+\emph{chunks}. La qualité de ce découpage conditionne directement celle du retrieval : un
+découpage naïf à taille fixe coupe les phrases et mélange les sections, tandis qu'un
+\emph{découpage sémantique} respecte la structure logique du document (sections,
+paragraphes, tableaux) et rattache chaque chunk à son contexte hiérarchique (titres de
+sections englobantes). C'est l'approche du \emph{HybridChunker} de Docling, utilisée ici.
+
+\subsection{Modèles de vision-langage (VLM)}
+
+Les modèles de vision-langage (GPT-4o vision, LLaVA, BLIP, Gemma-3) acceptent en entrée
+une image et un texte, et produisent du texte. Appliqués à une figure extraite d'un
+document, ils peuvent en produire une \emph{description textuelle détaillée} : type de
+figure, composants, relations, textes et valeurs visibles. Cette capacité est la clé de
+voûte du RAG \emph{multimodal} par description : elle projette le contenu visuel dans
+l'espace du texte, où il devient indexable et interrogeable avec les mêmes outils que le
+reste du corpus.
+
+\section{Approches existantes pour le RAG multimodal}
+\label{sec:approches}
+
+La littérature et la pratique industrielle distinguent trois grandes stratégies pour
+rendre les images d'un corpus interrogeables (figure~\ref{fig:approches-multimodal}) :
+
+\subsection{OCR seul}
+L'approche historique applique une reconnaissance optique de caractères (Tesseract, Azure
+Document Intelligence) aux images pour en extraire le texte visible. Elle est efficace pour
+les documents scannés et les captures d'écran riches en texte, mais ne capture rien de la
+\emph{sémantique visuelle} : un schéma électrique passé à l'OCR ne livre que quelques
+étiquettes isolées, pas la signification du circuit.
+
+\subsection{Captioning par VLM (description textuelle)}
+Chaque image est décrite par un VLM, et c'est la \emph{description} qui est vectorisée et
+indexée aux côtés des chunks de texte, dans le même espace vectoriel. Cette approche offre
+un excellent rapport qualité/complexité : index unique et homogène, pipeline de retrieval
+inchangé, descriptions lisibles par l'utilisateur (utile pour l'affichage des sources).
+Sa limite : la qualité de l'index dépend de la qualité (et de l'orientation) des
+descriptions générées.
+
+\subsection{Embeddings multimodaux natifs}
+Des modèles comme CLIP \cite{radford2021clip} ou, plus récemment, ColPali
+\cite{faysse2024colpali} projettent images et textes dans un espace vectoriel \emph{commun},
+permettant de rechercher directement une image à partir d'une question textuelle, sans
+description intermédiaire. C'est l'approche la plus puissante sur le plan théorique, mais
+elle impose une infrastructure de retrieval spécifique (index séparé ou multi-vecteurs,
+\emph{late interaction} pour ColPali), des modèles plus lourds à héberger, et produit des
+représentations opaques pour l'utilisateur.
+
+\rapportfig[0.95]{rag_multimodal_approches.png}{Les trois stratégies d'indexation des
+images d'un corpus : OCR seul, description par VLM, embeddings multimodaux natifs.}{fig:approches-multimodal}
+
+\section{Outils et solutions existants}
+\label{sec:outils}
+
+\subsection{Cadres logiciels open source}
+\textbf{LangChain} et \textbf{LlamaIndex} sont les deux cadres dominants pour assembler
+des pipelines RAG : ils fournissent des abstractions prêtes à l'emploi (loaders, splitters,
+retrievers, chains). Leur généricité a un coût : couches d'abstraction épaisses, dépendances
+nombreuses, comportements parfois difficiles à auditer, un point sensible lorsqu'il faut
+diagnostiquer finement la qualité du retrieval.
+
+\subsection{Analyse documentaire}
+Pour l'extraction du contenu des PDF, l'écosystème s'étend des bibliothèques bas niveau
+(PyMuPDF, pdfplumber, pypdfium2) aux solutions d'analyse structurelle par apprentissage
+profond : \textbf{Docling} \cite{docling2024} (IBM Research, open source), qui combine un
+modèle de détection de mise en page et TableFormer pour la reconstruction des tableaux, et
+les services cloud managés comme \textbf{Azure Document Intelligence} ou Amazon Textract.
+
+\subsection{Bases vectorielles}
+Le marché offre un continuum allant des bibliothèques embarquées (\textbf{ChromaDB},
+FAISS, LanceDB) aux serveurs dédiés (\textbf{Qdrant}, Weaviate, Milvus) et aux services
+managés (Pinecone). Les premières s'exécutent dans le processus applicatif sans
+infrastructure supplémentaire ; les seconds apportent réplication, sharding et très gros
+volumes.
+
+\subsection{Solutions intégrées du marché}
+Des produits clés en main adressent le même besoin : NotebookLM (Google), les assistants
+documentaires d'Azure AI Search « chat with your data », Glean, ou les GPTs personnalisés
+d'OpenAI. Ils offrent une mise en œuvre rapide mais imposent l'envoi du corpus chez un
+tiers, une personnalisation limitée du pipeline (chunking, retrieval, prompts) et des coûts
+de licence : trois points bloquants pour un démonstrateur interne maîtrisé de bout en bout.
+
+\section{Limites des solutions existantes}
+\label{sec:limites-existant}
+
+L'analyse de l'existant fait ressortir quatre limites au regard du besoin exprimé :
+
+\begin{enumerate}
+  \item \textbf{Cécité visuelle des RAG standards} : les pipelines RAG « par défaut »
+        (et la plupart des tutoriels/outils grand public) n'indexent que le texte ; les
+        figures, porteuses d'une part essentielle de l'information technique, sont ignorées ;
+  \item \textbf{Retrieval purement dense} : la recherche par embeddings seuls échoue sur
+        les requêtes exactes (références de figures, acronymes, identifiants), fréquentes
+        dans un contexte d'ingénierie ;
+  \item \textbf{Extraction PDF simpliste} : les loaders textuels basiques détruisent la
+        structure (tableaux aplatis, colonnes mélangées, légendes orphelines), dégradant
+        mécaniquement la qualité des chunks puis des réponses ;
+  \item \textbf{Inadéquation aux environnements contraints} : les solutions supposant
+        l'installation de services (Docker, serveurs de bases de données, OCR système) ou
+        l'accès libre à Internet sont inapplicables sur un poste d'entreprise verrouillé
+        derrière un proxy d'inspection TLS.
+\end{enumerate}
+
+\section{Apport de la solution proposée}
+\label{sec:apport}
+
+La solution développée répond point par point à ces limites :
+
+\begin{keybox}[Apports de la solution]
+\begin{itemize}
+  \item \textbf{Indexation multimodale unifiée} : les figures sont extraites par Docling,
+        décrites par un VLM (Gemma-3 27B) avec un prompt d'ancrage contextuel, et leurs
+        descriptions sont indexées \emph{dans le même espace vectoriel} que le texte : une
+        question peut donc être résolue indifféremment par un paragraphe ou par une figure,
+        laquelle est alors affichée à l'utilisateur ;
+  \item \textbf{Recherche hybride dense + BM25 fusionnée par RRF} : la complémentarité
+        sémantique/lexicale est exploitée sans calibration de scores, par fusion de rangs
+        réciproques \cite{cormack2009rrf} ;
+  \item \textbf{Analyse structurelle de qualité} : Docling préserve la structure logique
+        des documents (sections, tableaux, légendes de figures), et le découpage
+        \emph{HybridChunker} produit des chunks contextualisés respectant la limite de
+        tokens du modèle d'embeddings ;
+  \item \textbf{Architecture sans dépendance système} : SQLite, ChromaDB persistant et
+        FakeRedis s'exécutent dans le processus Python ; les modèles lourds sont consommés
+        via des API cloud accessibles à travers le proxy d'entreprise ; le tout
+        fonctionne sur un poste verrouillé et se déploie tel quel sur une VM OCI ;
+  \item \textbf{Qualité mesurée, pas supposée} : le système est évalué quantitativement
+        avec RAGAS \cite{es2023ragas} et un juge LLM indépendant du système évalué.
+\end{itemize}
+\end{keybox}
+
+\section{Positionnement du projet}
+\label{sec:positionnement}
+
+Le tableau~\ref{tab:positionnement} synthétise le positionnement de la solution par rapport
+aux familles d'alternatives. Le projet assume des choix de \emph{sobriété architecturale}
+adaptés à son cadre (un démonstrateur de huit semaines destiné à un déploiement OCI léger) :
+pipeline RAG assemblé directement sur les SDK des fournisseurs (sans LangChain), stockage
+embarqué, approche multimodale par description VLM plutôt que par embeddings multimodaux
+natifs. Conformément au cahier des charges, les architectures multi-agents, le RAG
+auto-correctif et la gestion fine des droits sont explicitement hors périmètre et traités
+comme perspectives.
+
+\begin{table}[!htb]
+\centering\small
+\caption{Positionnement de la solution développée par rapport à l'existant.}
+\label{tab:positionnement}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Dimension} & \textbf{Alternatives courantes} & \textbf{Choix du projet} \\
+\midrule
+Analyse PDF & Loaders textuels naïfs ; OCR cloud payant & Docling (layout + TableFormer), modèles locaux pré-téléchargés \\
+Images & Ignorées, ou OCR seul & Captioning VLM contextualisé + indexation unifiée \\
+Retrieval & Dense seul & Hybride dense + BM25, fusion RRF \\
+Base vectorielle & Serveur dédié (Qdrant, Milvus) & ChromaDB embarqué persistant \\
+Orchestration & LangChain / LlamaIndex & Pipeline explicite sur SDK natifs (auditable) \\
+Génération & GPT-4o (OpenAI) & Mistral \texttt{mistral-small-latest} (accessible via le proxy, coût maîtrisé) \\
+Évaluation & Tests manuels & RAGAS + juge LLM indépendant (Llama 3.3 70B) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Conclusion}
+
+Ce chapitre a établi le socle conceptuel du projet (LLM, embeddings, RAG, VLM, recherche
+hybride) et montré que les solutions existantes laissent un espace précis : celui d'un
+assistant documentaire multimodal, maîtrisé de bout en bout, fonctionnant dans un
+environnement d'entreprise contraint. Le chapitre suivant traduit ce positionnement en une
+architecture logicielle concrète : besoins, pipeline, composants, modélisation et
+justification détaillée des choix technologiques.

@@ -1,0 +1,419 @@
+% ============================ CHAPITRE 3 =============================
+\chapter{Réalisation, implémentation et validation}
+\label{chap:realisation}
+
+\section{Introduction}
+
+Ce dernier chapitre décrit la mise en œuvre effective de l'architecture conçue au
+chapitre~\ref{chap:conception}. Il présente l'environnement de développement (dont les
+contraintes ont pesé sur la réalisation autant que le cahier des charges lui-même),
+détaille l'implémentation des composants clés et l'intégration des services tiers, expose
+les mécanismes de sécurité applicative, puis la démarche de validation : évaluation
+quantitative RAGAS, scénario de démonstration, résultats obtenus, difficultés rencontrées
+et limites de la solution.
+
+\section{Environnement de développement}
+\label{sec:env-dev}
+
+\subsection{Poste de travail et contraintes}
+
+Le développement s'est déroulé sur un poste professionnel ALTEN sous Windows 11,
+\emph{verrouillé} : pas de droits d'administration, pas d'installation d'applications ou
+de services système (Docker, serveurs de bases de données, Tesseract...), et un agent
+\textbf{Zscaler Client Connector} interceptant l'intégralité du trafic HTTPS sortant par
+inspection TLS, quel que soit le réseau utilisé, l'agent étant applicatif et non
+réseau.
+
+\begin{alertbox}[Conséquences concrètes des contraintes]
+\begin{itemize}
+  \item Toute dépendance devait être installable \emph{sans droits administrateur} :
+        environnement virtuel Python (\texttt{venv}), paquets \texttt{pip} et \texttt{npm}
+        locaux au projet ;
+  \item Aucun service ne pouvait être installé : d'où SQLite, ChromaDB embarqué et
+        FakeRedis en processus ;
+  \item L'inspection TLS de Zscaler re-signe le trafic HTTPS avec son propre certificat
+        racine, reconnu par Windows mais pas par la liste \texttt{certifi} embarquée de
+        Python : toutes les requêtes HTTPS Python échouaient en
+        \texttt{CERTIFICATE\_VERIFY\_FAILED} alors que le navigateur fonctionnait ;
+  \item Certains domaines étaient bloqués : le CDN de stockage de Hugging Face
+        (téléchargement de modèles) et son API d'inférence, ce qui a imposé des
+        stratégies de contournement décrites plus loin.
+\end{itemize}
+\end{alertbox}
+
+\subsection{Outillage}
+
+L'environnement s'appuie sur : Python 3.12 en environnement virtuel, Node.js/npm pour le
+frontend (Vite assurant serveur de développement et rechargement à chaud), Git/GitHub pour
+le versionnement, Visual Studio Code assisté d'outils d'IA de développement, et des
+notebooks Jupyter pour les expérimentations préalables (validation du parsing Docling sur
+\emph{Attention Is All You Need}, comparaison de VLM pour le captioning, campagne
+d'évaluation RAGAS). L'API est documentée automatiquement par le Swagger UI de FastAPI
+(\texttt{/docs}), qui a servi de banc de test permanent.
+
+\section{Implémentation des composants principaux}
+\label{sec:implementation}
+
+\subsection{Analyse documentaire et découpage (\texttt{docling\_parser})}
+
+Le convertisseur Docling est construit une seule fois (mise en cache par
+\texttt{lru\_cache}) avec des options dédiées : génération des images de figures activée,
+OCR désactivé (hors périmètre de cette itération), backend PDF \texttt{pypdfium2} et,
+lorsque la variable \texttt{DOCLING\_ARTIFACTS\_PATH} est renseignée, chargement des
+modèles de layout et de reconstruction de tableaux depuis un dossier local plutôt que
+depuis Hugging Face : le mécanisme qui a permis de fonctionner malgré le blocage du CDN.
+
+Le découpage utilise le \emph{HybridChunker} de \texttt{docling-core}, paramétré par le
+tokenizer du modèle d'embeddings (512 tokens max) ; chaque chunk est \emph{contextualisé}
+(préfixé des titres de sections englobantes) et rattaché à son numéro de page pour la
+citation. Un découpage de repli à fenêtre glissante (1500 caractères, chevauchement de
+200) prend le relais si le chunker sémantique échoue sur un document atypique.
+
+\subsection{Description des figures par VLM (\texttt{hf\_client})}
+
+Chaque figure extraite est envoyée au VLM \textbf{Gemma-3 27B} (servi par DeepInfra via
+l'API unifiée Hugging Face Inference Providers) sous forme d'URL de données base64, avec
+un prompt d'ancrage soigneusement construit : nom du document et légende d'origine de la
+figure fournis comme contexte, consigne de décrire type, composants, relations, textes et
+valeurs visibles, interdiction des préambules (« Voici une description... ») et du
+\emph{hedging} sur les faits déjà donnés. La description finale indexée est la
+concaténation \emph{légende d'origine + description VLM} : la légende (« Figure 1: The
+Transformer architecture ») donne une prise à la recherche lexicale exacte, la
+description VLM la profondeur sémantique.
+
+Les appels aux API d'inférence sont protégés par une politique de nouvelle tentative
+sélective (bibliothèque \texttt{tenacity}) : trois essais à attente exponentielle
+aléatoire sur les erreurs 5xx transitoires (démarrages à froid des fournisseurs
+serverless), aucune tentative sur les 4xx (erreur d'authentification ou de charge utile,
+qu'un nouvel essai ne réparera pas).
+
+\subsection{Embeddings multi-backends}
+
+Le module d'embeddings illustre l'adaptation aux contraintes réseau : trois backends
+commutables par la seule variable \texttt{EMBEDDING\_BACKEND}, derrière une interface
+unique \texttt{embed\_texts()} :
+
+\begin{itemize}
+  \item \texttt{hf\_inference} : \texttt{multilingual-e5-large} via l'API Hugging Face,
+        le choix initial, devenu inutilisable lorsque le domaine a été bloqué ;
+  \item \texttt{local} : les mêmes poids e5-large exécutés sur CPU via
+        \texttt{transformers}, chargés depuis un dossier local en
+        \texttt{local\_files\_only} (jamais de réseau), avec \emph{mean pooling} masqué et
+        normalisation L2 reproduisant exactement la recette du serveur d'inférence HF,
+        garantissant des vecteurs compatibles avec l'index existant ;
+  \item \texttt{mistral} : \texttt{mistral-embed} via l'API Mistral, accessible à travers
+        Zscaler, le backend actif. Les vecteurs (1024 dim.) sont normalisés L2 pour que
+        la distance de ChromaDB ordonne comme une similarité cosinus, et envoyés par lots
+        de 32 (une requête pour plusieurs dizaines de textes, compatible avec la limite de
+        débit du palier gratuit).
+\end{itemize}
+
+\begin{alertbox}[Un piège d'ingénierie : deux espaces vectoriels de même dimension]
+\texttt{mistral-embed} et e5-large produisent tous deux des vecteurs de 1024 dimensions
+mais dans des espaces \emph{incompatibles}. ChromaDB ne signale donc aucune erreur si l'on
+change de backend sans réindexer : il renvoie silencieusement des similarités absurdes.
+La bascule vers Mistral a ainsi nécessité la purge de la collection et la réingestion
+complète du corpus, et le risque est explicitement documenté dans la configuration.
+\end{alertbox}
+
+\subsection{Recherche hybride (\texttt{vector\_store})}
+
+La recherche dense interroge ChromaDB avec filtres de métadonnées optionnels (liste de
+documents, type de chunk). La recherche lexicale s'appuie sur un index BM25 en mémoire
+reconstruit paresseusement depuis la collection ChromaDB (source de vérité unique)
+lorsqu'il est marqué obsolète par une ingestion ou une suppression ; ce choix évite un
+second index persistant à maintenir synchrone, pour un coût de reconstruction négligeable
+à l'échelle du corpus. La fusion RRF additionne, pour chaque chunk, les
+\(1/(60 + \mathrm{rang})\) de ses positions dans les deux classements, sur un
+sur-échantillonnage de \(3 \times k\) candidats par voie ; les scores fusionnés sont
+normalisés par le maximum pour l'affichage.
+
+\subsection{Routage automatique du périmètre (\texttt{auto-scope})}
+
+Lorsque l'utilisateur laisse le périmètre en automatique, un appel LLM léger
+(température 0) reçoit le catalogue \emph{groupes → documents indexés} et la question, et
+répond en JSON strict par la liste des groupes plausiblement pertinents. La conception est
+volontairement \emph{conservatrice} : toute défaillance (réponse non parsable, groupe
+inconnu, exception réseau) ou toute réponse équivalente à « tous les groupes » désactive
+le filtre : le routage ne peut jamais rétrécir le corpus par accident, seulement l'élaguer
+quand le modèle est confiant. Les groupes retenus sont affichés à l'utilisateur avec la
+réponse (« recherché dans : ... »), pour la transparence du périmètre.
+
+\subsection{Génération contrainte et restitution multimodale}
+
+Le prompt système de génération impose : réponse fondée \emph{uniquement} sur les sources
+numérotées, citations \texttt{[Source N]} en ligne, aveu explicite lorsque les sources ne
+contiennent pas la réponse. Il traite aussi une subtilité multimodale : le modèle est
+informé que certaines sources sont des figures (dont il ne voit que la description) et que
+l'application affiche automatiquement l'image citée sous la réponse ; sans cette
+instruction, le LLM s'excusait de « ne pas pouvoir montrer d'images ». Côté API, chaque
+source est restituée typée (\texttt{text} avec extrait, ou \texttt{image} avec URL et
+description), et le frontend affiche les cartes de sources et les figures citées.
+
+\subsection{Interface utilisateur}
+
+L'interface React comprend trois espaces : l'accueil, l'espace \emph{Documents} (dropzone
+de téléversement multiple, cartes de documents avec état d'ingestion en direct (étape
+courante affichée pendant le traitement), vue détail avec rendu Markdown et galerie de
+figures, gestion des groupes) et l'espace \emph{Chat} (historique des conversations,
+sélecteur de périmètre documentaire, rendu Markdown des réponses avec
+\texttt{react-markdown}, cartes de sources cliquables, visionneuse de figures). Le thème
+clair/sombre est persistant et l'ensemble des appels passe par un client API central qui
+joint le jeton de session Clerk.
+
+\section{Intégration des services tiers}
+\label{sec:integrations}
+
+\begin{table}[!htb]
+\centering\small
+\caption{Services externes intégrés et leur rôle.}
+\label{tab:services}
+\begin{tabularx}{\textwidth}{@{}p{3.4cm}p{4.2cm}X@{}}
+\toprule
+\textbf{Service} & \textbf{Rôle} & \textbf{Modalités d'intégration} \\
+\midrule
+Mistral AI & Embeddings + génération + routage & SDK \texttt{mistralai} ; batch d'embeddings normalisés L2 ; température 0 pour le routage JSON \\
+HF Inference Providers (DeepInfra) & Captioning VLM Gemma-3 27B & \texttt{huggingface\_hub.InferenceClient} ; images en data-URL base64 ; retry sélectif 5xx \\
+Clerk & Authentification & SDK React côté client ; côté backend, vérification RS256 pure via JWKS (aucun appel API Clerk par requête) \\
+Groq & Juge LLM d'évaluation (Llama 3.3 70B) & Utilisé uniquement dans le notebook RAGAS, indépendant du système évalué \\
+Redis / OCI Cache & Cache de lecture des conversations & Client \texttt{redis} ou \texttt{fakeredis} selon \texttt{REDIS\_URL} ; fail-open intégral \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Un détail d'intégration élégant côté Clerk : la clé publique (\texttt{pk\_...}) encode en
+base64 le domaine du Frontend API, qui est aussi l'émetteur des jetons et l'hôte du JWKS ;
+le backend décode ce domaine au démarrage et n'a besoin d'aucune configuration
+supplémentaire ni d'appel de découverte.
+
+\section{Détails techniques spécifiques à l'environnement contraint}
+\label{sec:details-contraintes}
+
+\subsection{Traversée du proxy Zscaler : \texttt{truststore}}
+
+Le problème des erreurs \texttt{CERTIFICATE\_VERIFY\_FAILED} (section~\ref{sec:env-dev})
+a été résolu proprement par le paquet \texttt{truststore} : un appel unique
+\texttt{truststore.inject\_into\_ssl()} à l'import du paquet applicatif, donc avant tout
+appel réseau, fait utiliser à Python le magasin de certificats de Windows (qui contient
+les racines ALTEN/Zscaler) au lieu de la liste \texttt{certifi} embarquée. Aucune
+désactivation de vérification TLS, aucune variable d'environnement fragile : la solution
+est sûre et transparente pour tout le code aval.
+
+\subsection{Modèles Docling hors ligne}
+
+Le CDN de Hugging Face étant bloqué, les modèles de Docling (détection de layout,
+TableFormer) ont été téléchargés sur une machine non restreinte
+(\texttt{docling-tools models download}), archivés, publiés en artefact de release GitHub
+(domaine autorisé), puis dépointés sur le poste via \texttt{DOCLING\_ARTIFACTS\_PATH}. Deux
+guides de mise en place (poste d'entreprise / poste personnel) documentent la procédure
+pour les repreneurs du projet.
+
+\subsection{Cache de conversations fail-open}
+
+Le cache JSON des lectures de conversations est conçu pour ne \emph{jamais} pouvoir nuire :
+toute erreur (Redis injoignable, valeur corrompue, exception du client) est interprétée
+comme un cache absent et l'application continue sur SQLite. Le backend est choisi par
+\texttt{REDIS\_URL} : \texttt{memory://} (FakeRedis en processus, poste verrouillé),
+URL Redis réelle (OCI Cache en production), ou vide (désactivé).
+
+\section{Sécurité applicative}
+\label{sec:securite}
+
+Sans viser la gestion fine des droits (hors périmètre), le système applique les
+fondamentaux :
+
+\begin{itemize}
+  \item \textbf{Authentification forte déléguée} : sessions gérées par Clerk ; le backend
+        vérifie chaque jeton par signature RS256 contre le JWKS de l'émetteur (clés
+        publiques mises en cache), contrôle l'émetteur et l'expiration, et rejette en 401
+        tout jeton absent ou invalide ;
+  \item \textbf{Cloisonnement des données} : toute lecture/écriture de conversation vérifie
+        que la conversation appartient à l'utilisateur du jeton (réponse 404 sinon, sans
+        révéler l'existence de la ressource) ;
+  \item \textbf{Validation des entrées} : schémas Pydantic sur toutes les routes, liste
+        blanche d'extensions de fichiers au téléversement, validation des noms de groupes,
+        identifiants générés côté serveur (UUID) ;
+  \item \textbf{CORS restrictif} : origines autorisées explicites par configuration ;
+  \item \textbf{Secrets hors dépôt} : clés d'API dans \texttt{.env} non versionné, avec
+        \texttt{.env.example} documenté ;
+  \item \textbf{TLS vérifié de bout en bout} : \texttt{truststore} maintient la
+        vérification des certificats à travers le proxy d'inspection (plutôt que de la
+        désactiver, réflexe dangereux courant dans ce type d'environnement).
+\end{itemize}
+
+\section{Tests et validation : évaluation RAGAS}
+\label{sec:evaluation}
+
+\subsection{Méthodologie}
+
+La qualité du système a été évaluée avec \textbf{RAGAS 0.4.3} \cite{es2023ragas} sur un
+corpus de trois documents indexés (\emph{BERT}, \emph{Attention Is All You Need},
+\emph{Circuit Diagram Symbols}) et six questions de référence rédigées manuellement avec
+leurs réponses attendues, couvrant les deux familles documentaires (articles de recherche
+et manuel technique riche en figures).
+
+Deux précautions méthodologiques structurent le protocole :
+
+\begin{itemize}
+  \item \textbf{Juge indépendant} : les métriques à base de LLM sont calculées par
+        \texttt{llama-3.3-70b-versatile} (servi par Groq), un modèle \emph{étranger} au
+        système évalué (qui génère avec Mistral), afin d'éviter le biais
+        d'auto-évaluation ;
+  \item \textbf{Espace vectoriel cohérent} : la métrique \emph{Answer Relevancy}, qui
+        compare des embeddings, utilise \texttt{mistral-embed}, les embeddings mêmes du
+        système, pour mesurer la pertinence dans l'espace où le système opère.
+\end{itemize}
+
+Quatre métriques sont retenues : \emph{Faithfulness} (la réponse est-elle fidèle aux
+passages récupérés, sans hallucination ?), \emph{Answer Relevancy} (répond-elle à la
+question ?), \emph{Context Precision} (les passages récupérés sont-ils pertinents ?) et
+\emph{Context Recall} (l'information nécessaire a-t-elle été récupérée ?) ; les deux
+premières évaluant la génération, les deux dernières le retrieval.
+
+\subsection{Résultats obtenus}
+
+\begin{table}[!htb]
+\centering\small
+\caption{Résultats de l'évaluation RAGAS (juge : Llama 3.3 70B via Groq).}
+\label{tab:ragas}
+\begin{tabularx}{\textwidth}{@{}Xcccc@{}}
+\toprule
+\textbf{Question} & \textbf{Faithf.} & \textbf{Ans. Rel.} & \textbf{Ctx. Prec.} & \textbf{Ctx. Rec.} \\
+\midrule
+Que signifie l'acronyme BERT ? & 1{,}000 & 0{,}890 & 0{,}756 & 1{,}000 \\
+Sur quelles deux tâches BERT est-il pré-entraîné ? & 1{,}000 & 0{,}896 & 0{,}700 & 1{,}000 \\
+Quel pourcentage de tokens est masqué lors du MLM ? & 1{,}000 & 0{,}959 & 0{,}700 & 1{,}000 \\
+Quel token spécial est ajouté en début de séquence ? & 1{,}000 & 0{,}987 & 1{,}000 & 1{,}000 \\
+À quoi sert un schéma de circuit électrique ? & 1{,}000 & 0{,}926 & 0{,}888 & 1{,}000 \\
+Que représente le symbole de mise à la terre ? & 0{,}000 & 0{,}926 & 1{,}000 & 1{,}000 \\
+\midrule
+\textbf{Moyenne} & \textbf{0{,}833} & \textbf{0{,}931} & \textbf{0{,}841} & \textbf{1{,}000} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Analyse des résultats}
+
+\begin{itemize}
+  \item \textbf{Context Recall = 1{,}00 partout} : l'information nécessaire est
+        systématiquement récupérée : la validation la plus directe de l'indexation
+        multimodale unifiée et de la recherche hybride dense + BM25 ;
+  \item \textbf{Answer Relevancy moyenne de 0{,}93} : les réponses adressent bien les
+        questions posées ;
+  \item \textbf{Faithfulness parfaite sur 5 questions sur 6} ; le zéro de la question sur
+        le symbole de mise à la terre est instructif : la réponse décrivait
+        l'\emph{apparence} du symbole (fidèle à la description VLM récupérée) plutôt que sa
+        \emph{signification électrique} attendue ; le contexte récupéré, issu d'une
+        description d'image, ne contenait pas la définition sémantique. L'axe
+        d'amélioration identifié porte sur le prompt de captioning et de génération
+        (distinguer « décrire » d'« expliquer la signification ») ;
+  \item \textbf{Context Precision de 0{,}70--0{,}76 sur les questions BERT} : le retrieval
+        remonte parfois des chunks d'\emph{Attention Is All You Need} non pertinents pour
+        BERT, les deux articles partagent un vocabulaire très proche. Pistes : re-ranking
+        ou filtrage par document.
+\end{itemize}
+
+\rapportfig[0.85]{ragas_radar.png}{Synthèse visuelle des quatre métriques RAGAS moyennes
+du système.}{fig:ragas-radar}
+
+\section{Scénario de démonstration}
+\label{sec:demo}
+
+Le scénario de démonstration de fin de stage déroule le cycle complet :
+
+\begin{enumerate}
+  \item Connexion (Clerk), arrivée sur l'espace documentaire vide ;
+  \item Téléversement en rafale de plusieurs PDF (article BERT + manuel de schémas
+        électriques) ; observation du traitement séquentiel et des étapes d'ingestion en
+        direct (« Describing figure 3 of 5... ») ;
+  \item Ouverture du détail d'un document : Markdown structuré (tableaux reconstruits),
+        galerie des figures avec descriptions générées par le VLM ;
+  \item Question textuelle (« Sur quelles tâches BERT est-il pré-entraîné ? ») : réponse
+        citée \texttt{[Source 1]}\texttt{[Source 2]} avec extraits et pages ;
+  \item Question visuelle (« Montre-moi l'architecture du Transformer ») : la réponse cite
+        une source de type figure et l'image s'affiche sous la réponse ;
+  \item Question avec périmètre automatique : l'interface indique les groupes retenus par
+        le routeur LLM ;
+  \item Question hors corpus : le système déclare explicitement ne pas trouver la réponse
+        dans les sources : démonstration du garde-fou anti-hallucination.
+\end{enumerate}
+
+\section{Résultats obtenus}
+\label{sec:resultats}
+
+Au terme des huit semaines, l'ensemble des objectifs du cahier des charges est atteint :
+
+\begin{itemize}
+  \item une chaîne d'ingestion multimodale complète et robuste (PDF/Word/Excel,
+        figures décrites et indexées, file sérialisée, suivi d'état, gestion d'erreurs) ;
+  \item un moteur de restitution hybride (dense + BM25 + RRF) avec routage automatique du
+        périmètre et génération contrainte citée ;
+  \item une API REST documentée (OpenAPI) d'une quinzaine de routes couvrant documents,
+        groupes, conversations et chat ;
+  \item une interface web complète et soignée (authentification, gestion du corpus, chat
+        multi-conversations, affichage des sources et figures, thème clair/sombre) ;
+  \item une évaluation quantitative RAGAS aux résultats solides (recall 1{,}00 ;
+        relevancy 0{,}93 ; precision 0{,}84 ; faithfulness 0{,}83) avec analyse des cas
+        d'échec ;
+  \item une base prête pour le déploiement OCI (stockage embarqué, cache commutable,
+        configuration par environnement).
+\end{itemize}
+
+\section{Difficultés rencontrées}
+\label{sec:difficultes}
+
+\begin{description}
+  \item[Blocages réseau successifs.] La difficulté dominante du stage. L'inspection TLS de
+    Zscaler a d'abord cassé toutes les requêtes HTTPS Python (résolu par
+    \texttt{truststore}) ; puis le blocage du CDN Hugging Face a empêché le téléchargement
+    des modèles Docling (résolu par le circuit hors ligne via release GitHub) ; enfin le
+    blocage de l'API d'inférence HF a invalidé le backend d'embeddings initial, imposant
+    la bascule vers \texttt{mistral-embed}, et donc la purge et la réingestion complète de
+    l'index (espaces vectoriels incompatibles à dimension égale) ;
+  \item[Robustesse du parsing PDF.] Le backend Docling par défaut s'effondrait en
+    \texttt{std::bad\_alloc} sur des PDF à images volumineuses ; le passage au backend
+    \texttt{pypdfium2} a réglé le problème au prix d'une fidélité de layout légèrement
+    moindre ;
+  \item[Contention d'écriture sous téléversements en rafale.] Les ingestions concurrentes
+    (une par requête via \texttt{BackgroundTasks}) saturaient le poste et faisaient
+    échouer des documents par contention SQLite/ChromaDB, résolu par la file à worker
+    unique ;
+  \item[Comportement du LLM face aux sources visuelles.] Sans instruction dédiée, le
+    modèle s'excusait de ne pas pouvoir afficher d'images (alors que l'application le fait
+    pour lui) ; et les descriptions VLM initiales, trop « visuelles », ont motivé le
+    prompt d'ancrage contextuel et le préfixage des légendes d'origine ;
+  \item[Calendrier contraint.] Huit semaines pour l'ensemble de la chaîne : les choix de
+    sobriété (pas de LangChain, stockage embarqué, services managés) ont été autant des
+    choix de qualité que des conditions de faisabilité.
+\end{description}
+
+\section{Limites de la solution}
+\label{sec:limites}
+
+\begin{itemize}
+  \item \textbf{Passage à l'échelle du retrieval} : l'index BM25 est reconstruit en
+        mémoire depuis ChromaDB, approprié à un corpus de démonstration, à revoir
+        (index persistant, base dédiée) pour des milliers de documents ;
+  \item \textbf{Pas d'OCR} : les documents scannés (images de texte) ne sont pas couverts
+        par cette itération ; l'architecture le permet (option Docling), la contrainte
+        d'installation de Tesseract ou le coût d'un service cloud l'ont différé ;
+  \item \textbf{Dépendance aux API externes} : embeddings, captioning et génération
+        reposent sur des services tiers : disponibilité, latence et limites de débit
+        s'imposent au système ;
+  \item \textbf{Évaluation à petite échelle} : six questions de référence suffisent à
+        diagnostiquer, pas à qualifier statistiquement ; un jeu d'évaluation étendu et
+        automatisé serait la suite naturelle ;
+  \item \textbf{Corpus partagé entre utilisateurs} : conformément au périmètre, seules les
+        conversations sont cloisonnées par utilisateur ; le corpus documentaire est commun
+        (pas de gestion fine des droits).
+\end{itemize}
+
+\section{Conclusion}
+
+Ce chapitre a montré la traduction de l'architecture en un système opérationnel, validé
+quantitativement, et façonné en profondeur par son environnement d'exécution : chaque
+contrainte du poste verrouillé a trouvé une réponse d'ingénierie propre (truststore,
+modèles hors ligne, backends commutables, stockage embarqué, file sérialisée) plutôt qu'un
+contournement fragile. Les résultats RAGAS valident les deux paris techniques centraux,
+l'indexation multimodale par description VLM et la recherche hybride RRF, tout en
+identifiant avec précision les axes d'amélioration.

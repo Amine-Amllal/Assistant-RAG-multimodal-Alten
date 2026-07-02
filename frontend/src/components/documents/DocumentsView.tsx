@@ -189,7 +189,7 @@ export function DocumentsView() {
               <Spinner />
             </div>
           ) : filtered.length === 0 ? (
-            <EmptyState title="No documents in this category" description="Upload a PDF to get started." />
+            <EmptyState title="No documents in this category" description="Upload a document to get started." />
           ) : (
             <div className={`documents-view__grid documents-view__grid--${viewMode}`}>
               {filtered.map((doc) => (

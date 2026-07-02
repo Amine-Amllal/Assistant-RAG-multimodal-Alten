@@ -13,6 +13,7 @@ PyJWT[crypto]
 docling
 docling-core
 transformers          # HybridChunker tokenizer + local embedding backend (EMBEDDING_BACKEND=local)
+openpyxl              # docling's XLSX backend
 
 # --- Hugging Face Inference API (embeddings + VLM image captioning) ---
 huggingface_hub
