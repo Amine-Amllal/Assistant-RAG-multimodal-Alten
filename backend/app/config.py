@@ -35,6 +35,8 @@ class Settings(BaseSettings):
 
     MISTRAL_API_KEY: str = ""
     MISTRAL_MODEL: str = "mistral-small-latest"
+
+    GROQ_API_KEY: str = ""
     # Embedding model used when EMBEDDING_BACKEND="mistral" (1024-dim).
     MISTRAL_EMBED_MODEL: str = "mistral-embed"
 
